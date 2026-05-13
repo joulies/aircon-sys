@@ -1,0 +1,474 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Poppins", sans-serif;
+}
+
+body {
+    background: #e6e6e6;
+}
+
+/* ================= TOP HEADER ================= */
+.top-header {
+    background: #2c6d91;
+    color: #fff;
+    padding: 6px 20px;
+    padding-right: 180px;
+    display: flex;
+    align-items: center;
+}
+
+.header-logo {
+    width: 72px;
+    max-width: 72px;
+    height: auto;
+    display: block;
+    margin: 4px 0;
+    object-fit: contain;
+}
+
+
+.h2.text-logo {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    margin-left: 10px;
+    font-size: 100px;
+}
+
+.h2.text-logo span {
+    font-weight: 100;
+}
+
+
+
+/* Make page headings smaller */
+h2 {
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+/* ================= RIGHT HEADER ================= */
+.right-section {
+    display: flex;
+    gap: 10px;
+    position: absolute;
+    right: 16px;  /* pushes it to the right */
+}
+
+
+.dropdown {
+    position: relative;
+}
+
+.drop-btn {
+    background: transparent;
+    border: 1px solid #fff;
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    background: #1a4056;
+    min-width: 160px;
+    top: 42px;
+    left: 0;
+    border-radius: 4px;
+    overflow: hidden;
+    z-index: 1000;
+}
+
+.dropdown-content a {
+    color: #fff;
+    padding: 12px 16px;
+    display: block;
+    text-decoration: none;
+    font-size: 13px;
+}
+
+.dropdown-content a:hover {
+    background: #0d2536;
+}
+
+.dropdown.open .dropdown-content {
+    display: block;
+}
+
+/* ================= CART ================= */
+.btn-fill {
+    background: #1e90ff;
+    color: #fff;
+    border: none;
+    padding: 7px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    position: relative;
+    font-size: 14px;
+}
+
+.cart-badge {
+    background: red;
+    color: #fff;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 50%;
+    position: absolute;
+    top: -6px;
+    right: -6px;
+}
+
+/* small outline button used for login */
+.btn-outline {
+    background: transparent;
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.85);
+    padding: 7px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+/* ================= NAV BAR ================= */
+.main-nav {
+    background: #fff;
+    display: flex;
+    justify-content: center;
+    gap: 80px;
+    padding: 15px 0;
+}
+
+.main-nav a {
+    color: #333;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+/* ================= HERO SLIDER ================= */
+.hero-slider {
+    height: 350px;
+    background: #000; /* Dark background for loading */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.slider-wrapper {
+    width: 100%;
+    height: 100%;
+}
+
+.slide {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: opacity 0.8s ease-in-out;
+}
+
+.slide.active {
+    opacity: 1;
+}
+
+.slide img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* Keeps image aspect ratio */
+    filter: brightness(0.8);
+}
+
+.slider-arrow {
+    position: absolute;
+    font-size: 30px;
+    border: none;
+    background: rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 10px;
+    cursor: pointer;
+    z-index: 5;
+    border-radius: 5px;
+}
+
+.slider-arrow:hover {
+    background: rgba(255, 255, 255, 0.6);
+}
+
+.slider-arrow.left { left: 20px; }
+.slider-arrow.right { right: 20px; }
+
+.slider-dots {
+    position: absolute;
+    bottom: 18px;
+    z-index: 5;
+}
+
+.slider-dots .dot {
+    width: 10px;
+    height: 10px;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 50%;
+    display: inline-block;
+    margin: 0 5px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.slider-dots .dot.active {
+    background: white;
+    transform: scale(1.2);
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+.breadcrumb { font-size: 0.85rem; color: #888; margin-bottom: 35px; width: 85%; margin: 30px auto 35px; }
+.breadcrumb a { color: #2c6d91; text-decoration: none; cursor: pointer; transition: color 0.2s; }
+.breadcrumb a:hover { color: #1e4a5c; text-decoration: underline; }
+.active-crumb { color: #333; font-weight: 600; }
+
+.home,
+.current {
+    background: #1F5F85;
+    color: #fff;
+}
+
+.mid {
+    background: #D9DEE2;
+    color: #333;
+}
+
+.arrow {
+    color: #444;
+}
+
+/* ──────────────────────────────
+   CONTAINERS / CARDS
+─────────────────────────────── */
+.container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    margin-top: 30px;
+}
+
+.checkout-wrapper {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 30px;
+    align-items: start;
+    background: #fff;
+    border-radius: 8px;
+    padding: 30px;
+    margin-bottom: 50px;
+}
+
+.checkout-layout {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 30px;
+    align-items: start;
+}
+
+.checkout-left {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+    background: #fff;
+    border-radius: 8px;
+    padding: 30px;
+}
+
+.checkout-right {
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-radius: 8px;
+    padding: 30px;
+}
+
+.checkout-form,
+.checkout-summary,
+.checkout-payment {
+    width: 100%;
+}
+
+
+#checkoutForm {
+    position: relative;
+}
+
+/* ──────────────────────────────
+   SUMMARY ROWS
+─────────────────────────────── */
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    margin: 14px 0;
+    font-size: 15px;
+}
+
+.summary-row.total {
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.divider {
+    margin: 18px 0;
+}
+
+.summary-row.appointment {
+    background: #e0f7fa;
+    padding: 8px;
+    border-radius: 6px;
+    font-weight: 500;
+}
+
+
+/* ──────────────────────────────
+   BUTTONS
+─────────────────────────────── */
+.button-group {
+    display: flex;
+    gap: 15px;
+    margin-top: 10px;
+}
+
+.checkout-btn,
+.printout {
+    flex: 1;
+    padding: 12px 20px;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.checkout-btn {
+    background: #000;
+    color: #fff;
+}
+
+.printout {
+    background: #1F5F85;
+    color: #fff;
+}
+
+.btn {
+    display: inline-flex;
+    gap: 5px;
+    margin-left: 57%;
+    margin-bottom: 10%;
+}
+
+/* ──────────────────────────────
+   FORM ELEMENTS
+─────────────────────────────── */
+.form-group {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 15px;
+}
+
+label {
+    margin-bottom: 10px;
+    font-weight: 600;
+    font-size: 14px;
+    color: #222;
+}
+
+.sub-title {
+    font-size: 16px;
+    font-weight: 700;
+    margin: 15px 0 10px 0;
+    color: #333;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="tel"],
+select,
+textarea {
+    border: 1px solid #D0D5D9;
+    padding: 10px 12px;
+    border-radius: 8px;
+    width: 100%;
+    background: #fff;
+    font-size: 14px;
+    color: #111;
+}
+
+/* Light gray fields */
+input#field {
+    background: #D9D9D9;
+    border: none;
+    border-radius: 6px;
+}
+/* PAYMENT RECEIPT FIX — NO EXPANSION */
+.receipt-upload {
+    position: absolute;
+    top: 90px; /* BELOW payment select */
+    left: 0;
+    right: 0;
+    background: #eaeaea;
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 10px;
+
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-10px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.receipt-upload.show {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+}
+
+
+
+/* ──────────────────────────────
+   PAYMENT NOTE
+─────────────────────────────── */
+.payment-row,
+.summary-card,
+.note-section {
+    margin-top: 8px;
+}
+
+.note-section {
+    font-size: 14px;
+    color: #555;
+    background: #D8D8D8;
+    padding: 12px;
+    border-radius: 6px;
+}
+
+hr {
+    border: none;
+    border-top: 1px solid #C4C4C4;
+    margin: 20px 0;
+}
+/* ───────── PAYMENT SPACE RESERVATION ───────── */
+.payment-wrapper {
+    position: relative;
+    padding-bottom: 220px; /* space for receipt */
+}
