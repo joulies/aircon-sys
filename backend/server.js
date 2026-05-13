@@ -210,15 +210,18 @@ app.get("/products/:id", (req, res) => {
 });
 
 // CREATE product (Admin)
-app.post("/products", (req, res) => {
-  const { product_name, brand_name, model_name, price, num_stocks, image } = req.body;
+app.post("/products", upload.single('image'), (req, res) => {
+  const { product_name, brand_name, model_name, price, num_stocks } = req.body;
   
   if (!product_name || !price) {
     return res.status(400).json({ error: "Missing required fields" });
   }
 
+  // Use uploaded filename if available, otherwise use default
+  const imageName = req.file ? req.file.filename : 'default.jpg';
+
   const query = "INSERT INTO products (product_name, brand_name, model_name, price, num_stocks, image) VALUES (?, ?, ?, ?, ?, ?)";
-  db.query(query, [product_name, brand_name, model_name, price, num_stocks || 0, image || 'default.jpg'], (err, result) => {
+  db.query(query, [product_name, brand_name, model_name, price, num_stocks || 0, imageName], (err, result) => {
     if (err) {
       console.error("Error creating product:", err);
       return res.status(500).json({ error: "Failed to create product" });
@@ -230,24 +233,37 @@ app.post("/products", (req, res) => {
       brand_name, 
       model_name, 
       price, 
-      num_stocks 
+      num_stocks,
+      image: imageName
     });
   });
 });
 
 // UPDATE product
-app.put("/products/:id", (req, res) => {
+app.put("/products/:id", upload.single('image'), (req, res) => {
   const { id } = req.params;
-  const { product_name, brand_name, model_name, price, num_stocks, image } = req.body;
+  const { product_name, brand_name, model_name, price, num_stocks } = req.body;
   
-  const query = "UPDATE products SET product_name=?, brand_name=?, model_name=?, price=?, num_stocks=?, image=? WHERE id=?";
-  db.query(query, [product_name, brand_name, model_name, price, num_stocks, image, id], (err) => {
-    if (err) {
-      console.error("Error updating product:", err);
-      return res.status(500).json({ error: "Failed to update product" });
-    }
-    res.json({ success: true, message: "Product updated" });
-  });
+  // If new image uploaded, use it; otherwise keep the existing one
+  if (req.file) {
+    const query = "UPDATE products SET product_name=?, brand_name=?, model_name=?, price=?, num_stocks=?, image=? WHERE id=?";
+    db.query(query, [product_name, brand_name, model_name, price, num_stocks, req.file.filename, id], (err) => {
+      if (err) {
+        console.error("Error updating product:", err);
+        return res.status(500).json({ error: "Failed to update product" });
+      }
+      res.json({ success: true, message: "Product updated" });
+    });
+  } else {
+    const query = "UPDATE products SET product_name=?, brand_name=?, model_name=?, price=?, num_stocks=? WHERE id=?";
+    db.query(query, [product_name, brand_name, model_name, price, num_stocks, id], (err) => {
+      if (err) {
+        console.error("Error updating product:", err);
+        return res.status(500).json({ error: "Failed to update product" });
+      }
+      res.json({ success: true, message: "Product updated" });
+    });
+  }
 });
 
 // DELETE product
