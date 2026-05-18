@@ -64,7 +64,7 @@ function ProductCard({ product, onCartUpdate }) {
       <p className={`stock-label ${isOutOfStock ? 'red-text' : ''}`}>
         {isOutOfStock ? 'Out of Stock' : `Stocks: ${product.num_stocks}`}
       </p>
-      <p className="product-price">₱ {parseFloat(product.price).toFixed(2)}</p>
+      <p className="product-price">₱ {parseFloat(product.price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
 
       <button 
         className="add-cart-btn" 

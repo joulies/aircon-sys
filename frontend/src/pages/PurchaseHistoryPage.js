@@ -146,8 +146,8 @@ function PurchaseHistoryPage() {
                     <tr key={idx}>
                       <td>{item.product_name}</td>
                       <td>{item.quantity}</td>
-                      <td>₱ {parseFloat(item.price).toFixed(2)}</td>
-                      <td>₱ {(item.quantity * parseFloat(item.price)).toFixed(2)}</td>
+                      <td>₱ {parseFloat(item.price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                      <td>₱ {(item.quantity * parseFloat(item.price)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                     </tr>
                   ))}
                 </tbody>

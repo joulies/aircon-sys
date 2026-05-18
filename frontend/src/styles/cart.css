@@ -41,10 +41,17 @@
 
 .cart-table thead th {
   text-align: left;
-  padding-bottom: 15px;
+  padding: 15px 10px;
   font-size: 16px;
   color: #1f5f85;
   border-bottom: 2px solid #ccc;
+  height: 50px;
+}
+
+.cart-table tbody td {
+  padding: 12px 10px;
+  height: 100px;
+  vertical-align: middle;
 }
 
 .cart-item {
@@ -60,16 +67,18 @@
   display: flex;
   align-items: center;
   gap: 15px;
-  padding: 15px 0;
+  padding: 0;
+  height: 100%;
 }
 
 .product-img {
-  width: 70px;
-  height: 70px;
+  width: 80px;
+  height: 80px;
   background: #c7c7c7;
   border-radius: 6px;
   background-size: cover;
   background-position: center;
+  flex-shrink: 0;
 }
 
 .product-info {
@@ -90,30 +99,50 @@
 .price-cell {
   font-weight: 600;
   color: #2c6d91;
+  text-align: right;
+  white-space: nowrap;
+  width: 120px;
 }
 
 .qty-cell {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 5px;
+  justify-content: center;
+  gap: 8px;
+  width: 140px;
+}
+
+.qty-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
 .qty-input {
   width: 50px;
+  height: 35px;
   text-align: center;
   border: 1px solid #ddd;
   padding: 5px;
   border-radius: 4px;
+  font-size: 14px;
 }
 
 .qty-btn {
-  width: 30px;
-  height: 30px;
+  width: 35px;
+  height: 35px;
   border: 1px solid #ddd;
   background: #fff;
   cursor: pointer;
   border-radius: 4px;
   transition: background 0.2s;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
 }
 
 .qty-btn:hover:not(:disabled) {
@@ -130,6 +159,9 @@
 .total-cell {
   font-weight: 600;
   color: #2c6d91;
+  text-align: right;
+  white-space: nowrap;
+  width: 120px;
 }
 
 .remove-btn {
@@ -140,6 +172,11 @@
   border-radius: 4px;
   cursor: pointer;
   transition: background 0.2s;
+  height: 35px;
+  width: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .remove-btn:hover {
@@ -198,7 +235,7 @@
 
 .installation-note {
   background: #e8f4f8;
-  padding: 15px;
+  padding: 12px 15px;
   border-radius: 6px;
   border-left: 4px solid #2c6d91;
   font-size: 13px;
@@ -206,8 +243,7 @@
   display: flex;
   gap: 10px;
   align-items: flex-start;
-  width: 290px;
-  flex-shrink: 0;
+  margin-bottom: 20px;
 }
 
 @media (max-width: 768px) {

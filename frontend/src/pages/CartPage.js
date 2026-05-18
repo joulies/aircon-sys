@@ -14,12 +14,6 @@ function CartPage() {
     loadCart();
   }, []);
 
-  // Auto-reload cart periodically to catch stock changes
-  useEffect(() => {
-    const interval = setInterval(loadCart, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
   const loadCart = async () => {
     try {
       setLoading(true);
@@ -110,20 +104,20 @@ function CartPage() {
 
   const validateCartBeforeCheckout = () => {
     console.log('[CartPage] Validating cart before checkout');
-    
-    // Check if any item has quantity exceeding stock
-    const invalidItems = cartItems.filter(item => parseInt(item.quantity) > parseInt(item.num_stocks));
-    
-    if (invalidItems.length > 0) {
-      const itemList = invalidItems
-        .map(item => `${item.product_name}: ${item.quantity} requested but only ${item.num_stocks} available`)
-        .join('\n');
-      
-      console.error('[CartPage] Invalid items found:', invalidItems);
-      alert(`Cannot proceed to checkout. The following items exceed available stock:\n\n${itemList}`);
+
+    // Check if any item is out of stock
+    const outOfStockItems = cartItems.filter(item => parseInt(item.num_stocks) <= 0);
+
+    if (outOfStockItems.length > 0) {
+      const itemList = outOfStockItems
+        .map(item => `${item.product_name}`)
+        .join(', ');
+
+      console.error('[CartPage] Out of stock items found:', outOfStockItems);
+      alert(`Cannot proceed to checkout. The following items are out of stock:\n\n${itemList}`);
       return false;
     }
-    
+
     console.log('[CartPage] Cart validation passed');
     return true;
   };
@@ -177,32 +171,10 @@ function CartPage() {
 
         {!loading && !error && cartItems.length > 0 && (
           <>
-            {cartItems.some(item => parseInt(item.quantity) > parseInt(item.num_stocks)) && (
-              <div style={{
-                backgroundColor: '#fff3cd',
-                border: '1px solid #ffc107',
-                borderRadius: '4px',
-                padding: '15px',
-                marginBottom: '20px',
-                color: '#856404'
-              }}>
-                <strong><i className="fa fa-exclamation-triangle"></i> Warning:</strong>
-                <p style={{ marginTop: '8px', marginBottom: 0 }}>
-                  The following items exceed available stock:
-                  <ul style={{ marginTop: '8px', marginBottom: 0 }}>
-                    {cartItems
-                      .filter(item => parseInt(item.quantity) > parseInt(item.num_stocks))
-                      .map(item => (
-                        <li key={item.id}>
-                          {item.product_name}: {item.quantity} in cart but only {item.num_stocks} available
-                        </li>
-                      ))
-                    }
-                  </ul>
-                  Please adjust quantities before proceeding to checkout.
-                </p>
-              </div>
-            )}
+            <p className="installation-note">
+              <i className="fa fa-info-circle"></i> Installation appointment is
+              required. You will set your preferred date and time in the next step.
+            </p>
             <table className="cart-table">
               <thead>
                 <tr>
@@ -229,37 +201,44 @@ function CartPage() {
                           <span className="brand">
                             {item.brand_name} — {item.model_name}
                           </span>
+                          {parseInt(item.num_stocks) <= 0 && (
+                            <span style={{ display: 'block', color: '#d9534f', fontSize: '12px', marginTop: '4px' }}>
+                              <i className="fa fa-times-circle"></i> Out of Stock
+                            </span>
+                          )}
                         </div>
                       </div>
                     </td>
-                    <td className="price-cell">₱ {parseFloat(item.price).toFixed(2)}</td>
+                    <td className="price-cell">₱ {parseFloat(item.price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                     <td className="qty-cell">
-                      <button
-                        className="qty-btn"
-                        onClick={() => updateQuantity(item.id, item.quantity - 1, item.num_stocks)}
-                        disabled={item.quantity <= 1}
-                      >
-                        −
-                      </button>
-                      <input
-                        type="text"
-                        className="qty-input"
-                        value={item.quantity}
-                        readOnly
-                      />
-                      <button
-                        className="qty-btn"
-                        onClick={() => updateQuantity(item.id, item.quantity + 1, item.num_stocks)}
-                        disabled={parseInt(item.quantity) >= parseInt(item.num_stocks)}
-                      >
-                        +
-                      </button>
+                      <div className="qty-controls">
+                        <button
+                          className="qty-btn"
+                          onClick={() => updateQuantity(item.id, item.quantity - 1, item.num_stocks)}
+                          disabled={item.quantity <= 1}
+                        >
+                          −
+                        </button>
+                        <input
+                          type="text"
+                          className="qty-input"
+                          value={item.quantity}
+                          readOnly
+                        />
+                        <button
+                          className="qty-btn"
+                          onClick={() => updateQuantity(item.id, item.quantity + 1, item.num_stocks)}
+                          disabled={parseInt(item.quantity) >= parseInt(item.num_stocks)}
+                        >
+                          +
+                        </button>
+                      </div>
                       <small style={{ display: 'block', color: '#666', fontSize: '12px', marginTop: '3px' }}>
                         Max: {item.num_stocks}
                       </small>
                     </td>
                     <td className="total-cell">
-                      ₱ {(parseFloat(item.price) * item.quantity).toFixed(2)}
+                      ₱ {(parseFloat(item.price) * item.quantity).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                     <td>
                       <button
@@ -267,7 +246,12 @@ function CartPage() {
                         onClick={() => removeFromCart(item.id)}
                         title="Remove item"
                       >
-                        <i className="fa fa-trash"></i>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3 6 5 6 21 6"></polyline>
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                          <line x1="10" y1="11" x2="10" y2="17"></line>
+                          <line x1="14" y1="11" x2="14" y2="17"></line>
+                        </svg>
                       </button>
                     </td>
                   </tr>
@@ -280,10 +264,6 @@ function CartPage() {
 
       {!loading && !error && cartItems.length > 0 && (
         <div className="checkout-area">
-          <p className="installation-note">
-            <i className="fa fa-info-circle"></i> Installation appointment is
-            required. You will set your preferred date and time in the next step.
-          </p>
           <div className="checkout-summary">
             <div className="total-line">
               <span>Subtotal:</span>
@@ -293,21 +273,21 @@ function CartPage() {
               className="checkout-btn"
               onClick={(e) => {
                 // Double-check validation on click
-                const hasInvalidItems = cartItems.some(item => parseInt(item.quantity) > parseInt(item.num_stocks));
-                if (hasInvalidItems) {
+                const hasOutOfStockItems = cartItems.some(item => parseInt(item.num_stocks) <= 0);
+                if (hasOutOfStockItems) {
                   e.preventDefault();
                   e.stopPropagation();
-                  console.error('[CartPage] Checkout blocked - items exceed stock');
-                  alert('Cannot proceed. Please adjust quantities to match available stock.');
+                  console.error('[CartPage] Checkout blocked - items out of stock');
+                  alert('Cannot proceed. Please remove out of stock items.');
                   return false;
                 }
                 handleProceedToCheckout(e);
               }}
-              disabled={cartItems.some(item => parseInt(item.quantity) > parseInt(item.num_stocks))}
+              disabled={cartItems.some(item => parseInt(item.num_stocks) <= 0)}
               style={{
-                opacity: cartItems.some(item => parseInt(item.quantity) > parseInt(item.num_stocks)) ? 0.6 : 1,
-                cursor: cartItems.some(item => parseInt(item.quantity) > parseInt(item.num_stocks)) ? 'not-allowed' : 'pointer',
-                pointerEvents: cartItems.some(item => parseInt(item.quantity) > parseInt(item.num_stocks)) ? 'none' : 'auto'
+                opacity: cartItems.some(item => parseInt(item.num_stocks) <= 0) ? 0.6 : 1,
+                cursor: cartItems.some(item => parseInt(item.num_stocks) <= 0) ? 'not-allowed' : 'pointer',
+                pointerEvents: cartItems.some(item => parseInt(item.num_stocks) <= 0) ? 'none' : 'auto'
               }}
             >
               Proceed to Checkout

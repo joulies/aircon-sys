@@ -149,7 +149,7 @@ function ProductDetailsPage() {
 
             <p className="product-description">{product.description || 'No description available'}</p>
 
-            <div className="product-price">₱ {parseFloat(product.price).toFixed(2)}</div>
+            <div className="product-price">₱ {parseFloat(product.price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
 
             <div className="quantity-selector">
               <label>Quantity:</label>

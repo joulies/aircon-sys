@@ -392,7 +392,7 @@ function CheckoutPage() {
                     {item.product_name} x{item.quantity}
                   </span>
                   <span className="item-price">
-                    ₱ {(parseFloat(item.price) * item.quantity).toFixed(2)}
+                    ₱ {(parseFloat(item.price) * item.quantity).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </div>
               ))}
