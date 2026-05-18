@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { signup as apiSignup } from '../services/api';
-import { useAuth } from '../context/AuthContext';
 import '../styles/auth.css';
 
 function SignupPage() {
@@ -19,7 +18,6 @@ function SignupPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const navigate = useNavigate();
-  const { login } = useAuth();
 
   const calculatePasswordStrength = (password) => {
     if (!password) return { level: 0, label: '', color: '' };
@@ -101,9 +99,8 @@ function SignupPage() {
       );
 
       if (result.success) {
-        login(result.user, result.token);
-        alert('Account created successfully! Redirecting to home page...');
-        navigate('/');
+        alert('Account created successfully! Redirecting to login...');
+        navigate('/login');
       }
     } catch (err) {
       setError(err.message || 'Signup failed. Please try again.');
