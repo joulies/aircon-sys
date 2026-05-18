@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { signup as apiSignup } from '../services/api';
+import Dialog from '../components/Dialog';
 import '../styles/auth.css';
 
 function SignupPage() {
@@ -17,6 +18,7 @@ function SignupPage() {
   const [passwordStrength, setPasswordStrength] = useState({ level: 0, label: '', color: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const navigate = useNavigate();
 
   const calculatePasswordStrength = (password) => {
@@ -99,8 +101,7 @@ function SignupPage() {
       );
 
       if (result.success) {
-        alert('Account created successfully! Redirecting to login...');
-        navigate('/login');
+        setDialogOpen(true);
       }
     } catch (err) {
       setError(err.message || 'Signup failed. Please try again.');
@@ -256,6 +257,13 @@ function SignupPage() {
           Already have an account? <Link to="/login">Login here</Link>
         </p>
       </div>
+
+      <Dialog
+        isOpen={dialogOpen}
+        title="Account Created"
+        message="Account created successfully! Redirecting to login..."
+        onClose={() => navigate('/login')}
+      />
     </div>
   );
 }

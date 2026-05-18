@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { verifyOtp, requestOtp } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import Dialog from '../components/Dialog';
 import '../styles/auth.css';
 
 function OTPVerificationPage() {
@@ -10,6 +11,8 @@ function OTPVerificationPage() {
   const [loading, setLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMessage, setDialogMessage] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useAuth();
@@ -51,8 +54,8 @@ function OTPVerificationPage() {
 
       if (result.success) {
         login(result.user, result.token);
-        alert('Email verified successfully! Redirecting to home page...');
-        navigate('/');
+        setDialogMessage('Email verified successfully! Redirecting to home page...');
+        setDialogOpen(true);
       }
     } catch (err) {
       setError(err.message || 'OTP verification failed. Please try again.');
@@ -70,7 +73,8 @@ function OTPVerificationPage() {
       if (result.success) {
         setOtp('');
         setResendTimer(60);
-        alert('OTP resent to your email');
+        setDialogMessage('OTP resent to your email');
+        setDialogOpen(true);
       }
     } catch (err) {
       setError(err.message || 'Failed to resend OTP');
@@ -123,6 +127,18 @@ function OTPVerificationPage() {
           </button>
         </div>
       </div>
+
+      <Dialog
+        isOpen={dialogOpen}
+        title={dialogMessage === 'Email verified successfully! Redirecting to home page...' ? 'Verified' : 'Success'}
+        message={dialogMessage}
+        onClose={() => {
+          setDialogOpen(false);
+          if (dialogMessage === 'Email verified successfully! Redirecting to home page...') {
+            navigate('/');
+          }
+        }}
+      />
     </div>
   );
 }

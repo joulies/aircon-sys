@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { login as apiLogin, requestOtp } from '../services/api';
+import Dialog from '../components/Dialog';
 import '../styles/auth.css';
 
 function LoginPage() {
