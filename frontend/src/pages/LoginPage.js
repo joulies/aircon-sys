@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { login as apiLogin } from '../services/api';
-import { useAuth } from '../context/AuthContext';
+import { login as apiLogin, requestOtp } from '../services/api';
 import '../styles/auth.css';
 
 function LoginPage() {
@@ -12,7 +11,6 @@ function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { login } = useAuth();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -32,7 +30,7 @@ function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     const validationError = validateForm();
     if (validationError) {
       setError(validationError);
@@ -44,10 +42,18 @@ function LoginPage() {
       const result = await apiLogin(formData.email, formData.password);
 
       if (result.success) {
-        // Call the login method from AuthContext to update the context state
-        login(result.user, result.token);
-        alert('Login successful! Redirecting to home page...');
-        navigate('/');
+        // Request OTP after successful password authentication
+        const otpResult = await requestOtp(result.user.id, result.user.email);
+
+        if (otpResult.success) {
+          // Navigate to OTP verification page
+          navigate('/otp-verify', {
+            state: {
+              userId: result.user.id,
+              email: result.user.email
+            }
+          });
+        }
       }
     } catch (err) {
       setError(err.message || 'Login failed. Please try again.');
@@ -60,9 +66,9 @@ function LoginPage() {
     <div className="auth-container">
       <div className="auth-card">
         <h1 className="auth-title">Login to Your Account</h1>
-        
+
         {error && <div className="auth-error">{error}</div>}
-        
+
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">
             <label htmlFor="email">Email Address *</label>
@@ -73,25 +79,25 @@ function LoginPage() {
               value={formData.email}
               onChange={handleChange}
               placeholder="Enter your email"
-              required
             />
           </div>
 
           <div className="form-group">
             <label htmlFor="password">Password *</label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="Enter your password"
-              required
-            />
+            <div className="password-input-wrapper">
+              <input
+                type="password"
+                id="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="Enter your password"
+              />
+            </div>
           </div>
 
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             className="auth-button"
             disabled={loading}
           >

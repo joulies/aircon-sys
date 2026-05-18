@@ -6,9 +6,30 @@ const multer = require("multer");
 const path = require("path");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const nodemailer = require("nodemailer");
+require("dotenv").config();
 
 const app = express();
 const JWT_SECRET = "your_jwt_secret_key_change_in_production";
+
+// Configure Gmail SMTP
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.GMAIL_USER || "your-email@gmail.com",
+    pass: process.env.GMAIL_PASSWORD || "your-app-password"
+  }
+});
+
+// Test email connection
+transporter.verify((err, success) => {
+  if (err) {
+    console.warn("⚠ Email service not configured. OTP emails will not be sent. Set GMAIL_USER and GMAIL_PASSWORD in .env");
+  } else {
+    console.log("✓ Email service configured successfully");
+  }
+});
+
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -177,6 +198,124 @@ app.post("/auth/verify", (req, res) => {
   } catch (err) {
     return res.status(401).json({ success: false, message: "Invalid token" });
   }
+});
+
+// REQUEST OTP
+app.post("/auth/request-otp", (req, res) => {
+  const { userId, email } = req.body;
+
+  if (!userId || !email) {
+    return res.status(400).json({ success: false, message: "User ID and email required" });
+  }
+
+  // Generate 6-digit OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+  // Save OTP to database
+  db.query(
+    "UPDATE user_signup SET otp_code = ?, otp_expires = ? WHERE id = ?",
+    [otp, expiresAt, userId],
+    async (err) => {
+      if (err) {
+        console.error("Database error:", err);
+        return res.status(500).json({ success: false, message: "Failed to generate OTP" });
+      }
+
+      // Send OTP via email
+      const mailOptions = {
+        from: process.env.GMAIL_USER || "your-email@gmail.com",
+        to: email,
+        subject: "Your OTP Verification Code",
+        html: `
+          <h2>Email Verification</h2>
+          <p>Your OTP verification code is:</p>
+          <h1 style="color: #1e90ff; font-size: 32px; letter-spacing: 5px;">${otp}</h1>
+          <p>This code will expire in 10 minutes.</p>
+          <p>If you didn't request this code, please ignore this email.</p>
+        `
+      };
+
+      transporter.sendMail(mailOptions, (err, info) => {
+        if (err) {
+          console.error("Email sending error:", err);
+          return res.status(500).json({ success: false, message: "Failed to send OTP email" });
+        }
+
+        res.json({
+          success: true,
+          message: "OTP sent to your email",
+          expiresIn: 600
+        });
+      });
+    }
+  );
+});
+
+// VERIFY OTP
+app.post("/auth/verify-otp", (req, res) => {
+  const { userId, email, otp } = req.body;
+
+  if (!userId || !email || !otp) {
+    return res.status(400).json({ success: false, message: "User ID, email, and OTP required" });
+  }
+
+  db.query(
+    "SELECT id, fname, lname, email, contact, role, otp_code, otp_expires FROM user_signup WHERE id = ? AND email = ?",
+    [userId, email],
+    (err, results) => {
+      if (err) {
+        console.error("Database error:", err);
+        return res.status(500).json({ success: false, message: "Database error" });
+      }
+
+      if (results.length === 0) {
+        return res.status(400).json({ success: false, message: "User not found" });
+      }
+
+      const user = results[0];
+      const now = new Date();
+
+      // Check if OTP expired
+      if (!user.otp_code || new Date(user.otp_expires) < now) {
+        return res.status(400).json({ success: false, message: "OTP expired. Please request a new one." });
+      }
+
+      // Check if OTP matches
+      if (user.otp_code !== otp) {
+        return res.status(400).json({ success: false, message: "Invalid OTP" });
+      }
+
+      // Clear OTP from database
+      db.query(
+        "UPDATE user_signup SET otp_code = NULL, otp_expires = NULL WHERE id = ?",
+        [userId],
+        (err) => {
+          if (err) {
+            console.error("Database error:", err);
+            return res.status(500).json({ success: false, message: "Failed to verify OTP" });
+          }
+
+          // Generate final JWT token
+          const token = jwt.sign({ id: userId, email }, JWT_SECRET, { expiresIn: "7d" });
+
+          res.json({
+            success: true,
+            message: "OTP verified successfully",
+            token,
+            user: {
+              id: user.id,
+              fname: user.fname,
+              lname: user.lname,
+              email: user.email,
+              contact: user.contact,
+              role: user.role
+            }
+          });
+        }
+      );
+    }
+  );
 });
 
 // ==========================================

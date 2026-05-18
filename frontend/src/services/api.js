@@ -94,6 +94,46 @@ export const verifyToken = async (token) => {
   }
 };
 
+// Request OTP
+export const requestOtp = async (userId, email) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/request-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, email }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || 'Failed to request OTP');
+    return data;
+  } catch (error) {
+    console.error('Error requesting OTP:', error);
+    throw error;
+  }
+};
+
+// Verify OTP
+export const verifyOtp = async (userId, email, otp) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, email, otp }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || 'OTP verification failed');
+
+    // Store token in localStorage
+    if (data.token) {
+      localStorage.setItem('authToken', data.token);
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error verifying OTP:', error);
+    throw error;
+  }
+};
+
 // Get all products
 export const fetchProducts = async () => {
   try {
