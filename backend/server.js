@@ -160,8 +160,24 @@ app.post("/auth/login", (req, res) => {
 
     const user = results[0];
 
-    // Compare passwords
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    // Compare passwords - handle both hashed and plain text for backward compatibility
+    let isPasswordValid = false;
+
+    try {
+      // Try bcrypt comparison first (for hashed passwords)
+      isPasswordValid = await bcrypt.compare(password, user.password);
+    } catch (err) {
+      // If bcrypt fails, try plain text comparison (for legacy passwords)
+      isPasswordValid = password === user.password;
+
+      // If plain text match, hash it and update the database for security
+      if (isPasswordValid) {
+        const hashedPassword = await bcrypt.hash(password, 10);
+        db.query("UPDATE user_signup SET password = ? WHERE id = ?", [hashedPassword, user.id], (updateErr) => {
+          if (updateErr) console.error("Error updating password hash:", updateErr);
+        });
+      }
+    }
 
     if (!isPasswordValid) {
       return res.status(400).json({ success: false, message: "Invalid email or password" });
@@ -178,8 +194,10 @@ app.post("/auth/login", (req, res) => {
         id: user.id,
         fname: user.fname,
         lname: user.lname,
+        name: `${user.fname} ${user.lname}`,
         email: user.email,
         contact: user.contact,
+        phone: user.contact,
         role: user.role
       }
     });
@@ -1255,7 +1273,7 @@ app.post("/admin/add-employee", (req, res) => {
   db.query(
     "SELECT id FROM user_signup WHERE email = ?",
     [email],
-    (err, results) => {
+    async (err, results) => {
       if (err) {
         console.error("Error checking email:", err);
         return res.status(500).json({ error: "Database error" });
@@ -1265,35 +1283,43 @@ app.post("/admin/add-employee", (req, res) => {
         return res.status(409).json({ error: "Email already exists" });
       }
 
-      // Insert new employee
-      db.query(
-        "INSERT INTO user_signup (fname, lname, email, contact, password, role) VALUES (?, ?, ?, ?, ?, 'employee')",
-        [fname, lname, email, contact, password],
-        (err, result) => {
-          if (err) {
-            console.error("Error adding employee:", err);
-            return res.status(500).json({ error: "Failed to add employee" });
+      // Hash password before storing
+      try {
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Insert new employee with hashed password
+        db.query(
+          "INSERT INTO user_signup (fname, lname, email, contact, password, role) VALUES (?, ?, ?, ?, ?, 'employee')",
+          [fname, lname, email, contact, hashedPassword],
+          (err, result) => {
+            if (err) {
+              console.error("Error adding employee:", err);
+              return res.status(500).json({ error: "Failed to add employee" });
+            }
+
+            // Return the newly created employee
+            const newEmployee = {
+              id: result.insertId,
+              fname,
+              lname,
+              email,
+              contact,
+              password,
+              position: "Employee",
+              created_at: new Date().toISOString()
+            };
+
+            res.status(201).json({
+              success: true,
+              message: "Employee added successfully",
+              employee: newEmployee
+            });
           }
-
-          // Return the newly created employee
-          const newEmployee = {
-            id: result.insertId,
-            fname,
-            lname,
-            email,
-            contact,
-            password,
-            position: "Employee",
-            created_at: new Date().toISOString()
-          };
-
-          res.status(201).json({ 
-            success: true,
-            message: "Employee added successfully",
-            employee: newEmployee
-          });
-        }
-      );
+        );
+      } catch (hashError) {
+        console.error("Error hashing password:", hashError);
+        return res.status(500).json({ error: "Failed to process password" });
+      }
     }
   );
 });

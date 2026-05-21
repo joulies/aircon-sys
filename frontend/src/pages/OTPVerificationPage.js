@@ -19,6 +19,7 @@ function OTPVerificationPage() {
 
   const userId = location.state?.userId;
   const email = location.state?.email;
+  const userRole = location.state?.userRole;
 
   useEffect(() => {
     if (!userId || !email) {
@@ -54,7 +55,7 @@ function OTPVerificationPage() {
 
       if (result.success) {
         login(result.user, result.token);
-        setDialogMessage('Email verified successfully! Redirecting to home page...');
+        setDialogMessage('Email verified successfully! Redirecting...');
         setDialogOpen(true);
       }
     } catch (err) {
@@ -130,12 +131,16 @@ function OTPVerificationPage() {
 
       <Dialog
         isOpen={dialogOpen}
-        title={dialogMessage === 'Email verified successfully! Redirecting to home page...' ? 'Verified' : 'Success'}
+        title="Verified"
         message={dialogMessage}
         onClose={() => {
           setDialogOpen(false);
-          if (dialogMessage === 'Email verified successfully! Redirecting to home page...') {
-            navigate('/');
+          if (dialogMessage === 'Email verified successfully! Redirecting...') {
+            if (userRole === 'employee') {
+              navigate('/employee/dashboard');
+            } else {
+              navigate('/');
+            }
           }
         }}
       />

@@ -4,6 +4,7 @@ import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
+import EmployeeRoute from './components/EmployeeRoute';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
@@ -26,6 +27,11 @@ import AdminOrderAnalytics from './admin/AdminOrderAnalytics';
 import AdminAssignEmployees from './admin/AdminAssignEmployees';
 import AdminSettings from './admin/AdminSettings';
 import AdminReports from './admin/AdminReports';
+import EmployeeLayout from './employee/EmployeeLayout';
+import EmployeeDashboard from './employee/EmployeeDashboard';
+import EmployeeAssignedAppointments from './employee/EmployeeAssignedAppointments';
+import EmployeeAppointmentsHistory from './employee/EmployeeAppointmentsHistory';
+import EmployeeAccountSettings from './employee/EmployeeAccountSettings';
 
 function App() {
   return (
@@ -57,6 +63,12 @@ function App() {
           <Route path="/admin/refund-requests" element={<AdminRoute><AdminRefundRequests /></AdminRoute>} />
           <Route path="/admin/settings" element={<AdminRoute><AdminSettings /></AdminRoute>} />
           <Route path="/admin/reports" element={<AdminRoute><AdminReports /></AdminRoute>} />
+
+          {/* Employee Routes */}
+          <Route path="/employee/dashboard" element={<EmployeeRoute><EmployeeLayout><EmployeeDashboard /></EmployeeLayout></EmployeeRoute>} />
+          <Route path="/employee/assigned" element={<EmployeeRoute><EmployeeLayout><EmployeeAssignedAppointments /></EmployeeLayout></EmployeeRoute>} />
+          <Route path="/employee/history" element={<EmployeeRoute><EmployeeLayout><EmployeeAppointmentsHistory /></EmployeeLayout></EmployeeRoute>} />
+          <Route path="/employee/settings" element={<EmployeeRoute><EmployeeLayout><EmployeeAccountSettings /></EmployeeLayout></EmployeeRoute>} />
         </Routes>
       </Router>
       </CartProvider>

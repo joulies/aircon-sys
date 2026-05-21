@@ -48,10 +48,13 @@ function LoginPage() {
         // Update AuthContext
         contextLogin(result.user, result.token);
 
-        // Check if user is admin
+        // Route based on user role
         if (result.user.role === 'admin') {
           // Skip OTP for admin and go directly to dashboard
           navigate('/admin/dashboard');
+        } else if (result.user.role === 'employee') {
+          // Skip OTP for employee and go directly to dashboard
+          navigate('/employee/dashboard');
         } else {
           // Request OTP for regular users
           const otpResult = await requestOtp(result.user.id, result.user.email);
@@ -61,7 +64,8 @@ function LoginPage() {
             navigate('/otp-verify', {
               state: {
                 userId: result.user.id,
-                email: result.user.email
+                email: result.user.email,
+                userRole: result.user.role
               }
             });
           }
