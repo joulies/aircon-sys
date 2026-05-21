@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { login as apiLogin, requestOtp } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import Dialog from '../components/Dialog';
 import '../styles/auth.css';
 
@@ -12,6 +13,7 @@ function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { login: contextLogin } = useAuth();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -43,17 +45,26 @@ function LoginPage() {
       const result = await apiLogin(formData.email, formData.password);
 
       if (result.success) {
-        // Request OTP after successful password authentication
-        const otpResult = await requestOtp(result.user.id, result.user.email);
+        // Update AuthContext
+        contextLogin(result.user, result.token);
 
-        if (otpResult.success) {
-          // Navigate to OTP verification page
-          navigate('/otp-verify', {
-            state: {
-              userId: result.user.id,
-              email: result.user.email
-            }
-          });
+        // Check if user is admin
+        if (result.user.role === 'admin') {
+          // Skip OTP for admin and go directly to dashboard
+          navigate('/admin/dashboard');
+        } else {
+          // Request OTP for regular users
+          const otpResult = await requestOtp(result.user.id, result.user.email);
+
+          if (otpResult.success) {
+            // Navigate to OTP verification page
+            navigate('/otp-verify', {
+              state: {
+                userId: result.user.id,
+                email: result.user.email
+              }
+            });
+          }
         }
       }
     } catch (err) {

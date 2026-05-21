@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getNotifications, deleteNotification, deleteAllNotifications, logout as apiLogout } from '../services/api';
+import { getNotifications, deleteNotification, deleteAllNotifications } from '../services/api';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import logo from '../logo.png';
@@ -103,8 +103,11 @@ function Header({ userName = 'Guest' }) {
 
   const handleLogout = () => {
     if (window.confirm('Are you sure you want to logout?')) {
+      // Store role before logout clears user data
+      const isAdmin = user?.role === 'admin';
       logout();
-      navigate('/');
+      // Admin redirects to login, regular users redirect to home
+      navigate(isAdmin ? '/login' : '/');
     }
   };
 

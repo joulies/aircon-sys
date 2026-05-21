@@ -2,6 +2,8 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
+import ProtectedRoute from './components/ProtectedRoute';
+import AdminRoute from './components/AdminRoute';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
@@ -37,24 +39,24 @@ function App() {
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/otp-verify" element={<OTPVerificationPage />} />
           <Route path="/product/:id" element={<ProductDetailsPage />} />
-          <Route path="/cart" element={<CartPage />} />
-          <Route path="/appointment" element={<AppointmentPage />} />
-          <Route path="/checkout" element={<CheckoutPage />} />
-          <Route path="/purchase-history" element={<PurchaseHistoryPage />} />
-          <Route path="/order-tracking/:orderId" element={<OrderTrackingPage />} />
-          
+          <Route path="/cart" element={<ProtectedRoute><CartPage /></ProtectedRoute>} />
+          <Route path="/appointment" element={<ProtectedRoute><AppointmentPage /></ProtectedRoute>} />
+          <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
+          <Route path="/purchase-history" element={<ProtectedRoute><PurchaseHistoryPage /></ProtectedRoute>} />
+          <Route path="/order-tracking/:orderId" element={<ProtectedRoute><OrderTrackingPage /></ProtectedRoute>} />
+
           {/* Admin Routes */}
-          <Route path="/admin/dashboard" element={<AdminDashboard />} />
-          <Route path="/admin/products" element={<AdminProducts />} />
-          <Route path="/admin/orders" element={<AdminOrders />} />
-          <Route path="/admin/users" element={<AdminUsers />} />
-          <Route path="/admin/appointments" element={<AdminAppointments />} />
-          <Route path="/admin/order-analytics" element={<AdminOrderAnalytics />} />
-          <Route path="/admin/assign-employees" element={<AdminAssignEmployees />} />
-          <Route path="/admin/employees" element={<AdminEmployees />} />
-          <Route path="/admin/refund-requests" element={<AdminRefundRequests />} />
-          <Route path="/admin/settings" element={<AdminSettings />} />
-          <Route path="/admin/reports" element={<AdminReports />} />
+          <Route path="/admin/dashboard" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+          <Route path="/admin/products" element={<AdminRoute><AdminProducts /></AdminRoute>} />
+          <Route path="/admin/orders" element={<AdminRoute><AdminOrders /></AdminRoute>} />
+          <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
+          <Route path="/admin/appointments" element={<AdminRoute><AdminAppointments /></AdminRoute>} />
+          <Route path="/admin/order-analytics" element={<AdminRoute><AdminOrderAnalytics /></AdminRoute>} />
+          <Route path="/admin/assign-employees" element={<AdminRoute><AdminAssignEmployees /></AdminRoute>} />
+          <Route path="/admin/employees" element={<AdminRoute><AdminEmployees /></AdminRoute>} />
+          <Route path="/admin/refund-requests" element={<AdminRoute><AdminRefundRequests /></AdminRoute>} />
+          <Route path="/admin/settings" element={<AdminRoute><AdminSettings /></AdminRoute>} />
+          <Route path="/admin/reports" element={<AdminRoute><AdminReports /></AdminRoute>} />
         </Routes>
       </Router>
       </CartProvider>

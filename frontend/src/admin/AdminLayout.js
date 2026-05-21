@@ -1,9 +1,19 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import '../styles/admin.css';
 
 const AdminLayout = ({ children }) => {
     const location = useLocation();
+    const navigate = useNavigate();
+    const { logout } = useAuth();
+
+    const handleLogout = () => {
+        if (window.confirm('Are you sure you want to logout?')) {
+            logout();
+            navigate('/login');
+        }
+    };
 
     const isActive = (path) => {
         return location.pathname === path ? 'active' : '';
@@ -103,12 +113,12 @@ const AdminLayout = ({ children }) => {
                         </Link>
                     </li>
                     <li>
-                        <Link 
-                            to="/" 
-                            className="nav-link"
+                        <button
+                            onClick={handleLogout}
+                            className="nav-link logout-btn"
                         >
                             Logout
-                        </Link>
+                        </button>
                     </li>
                 </ul>
             </nav>
