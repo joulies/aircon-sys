@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS orders (
   id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT DEFAULT NULL,
   appointment_id INT DEFAULT NULL,
+  order_number VARCHAR(50) UNIQUE DEFAULT NULL,
   total_amount DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
   installation_fee DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
   payment_method VARCHAR(50) NOT NULL,
@@ -98,6 +99,7 @@ CREATE TABLE IF NOT EXISTS order_items (
 -- ==========================================
 CREATE TABLE IF NOT EXISTS appointments (
   id INT AUTO_INCREMENT PRIMARY KEY,
+  appointment_number VARCHAR(50) UNIQUE DEFAULT NULL,
   order_id VARCHAR(100) DEFAULT NULL,
   user_id INT NOT NULL,
   appointment_date DATE NOT NULL,

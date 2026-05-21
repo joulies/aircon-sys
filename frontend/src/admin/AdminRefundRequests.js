@@ -75,7 +75,7 @@ const AdminRefundRequests = () => {
                                 <tr key={request.id} style={{ borderBottom: '1px solid #eee' }}>
                                     <td style={{ padding: '12px', color: '#333' }}>#{request.id}</td>
                                     <td style={{ padding: '12px', color: '#333' }}>{request.fname} {request.lname}</td>
-                                    <td style={{ padding: '12px', color: '#333' }}>#{request.order_id}</td>
+                                    <td style={{ padding: '12px', color: '#333' }}>{request.order_number}</td>
                                     <td style={{ padding: '12px', color: '#333' }}>₱{request.amount.toLocaleString()}</td>
                                     <td style={{ padding: '12px', color: '#666' }}>{request.reason}</td>
                                     <td style={{ padding: '12px' }}>

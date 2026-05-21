@@ -60,7 +60,7 @@ const AdminAppointments = () => {
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead>
                             <tr style={{ borderBottom: '2px solid #eee' }}>
-                                <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Appointment ID</th>
+                                <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Appointment #</th>
                                 <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Customer</th>
                                 <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Email</th>
                                 <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Phone</th>
@@ -72,7 +72,7 @@ const AdminAppointments = () => {
                         <tbody>
                             {appointments.map((apt) => (
                                 <tr key={apt.id} style={{ borderBottom: '1px solid #eee' }}>
-                                    <td style={{ padding: '12px', color: '#333', fontWeight: '600' }}>#{apt.id}</td>
+                                    <td style={{ padding: '12px', color: '#333', fontWeight: '600' }}>{apt.appointment_number}</td>
                                     <td style={{ padding: '12px', color: '#333' }}>{apt.fname} {apt.lname}</td>
                                     <td style={{ padding: '12px', color: '#666' }}>{apt.email}</td>
                                     <td style={{ padding: '12px', color: '#666' }}>{apt.contact}</td>

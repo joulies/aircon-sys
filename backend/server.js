@@ -7,6 +7,8 @@ const path = require("path");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
+const { generateOrderNumber } = require("./utils/orderNumber");
+const { generateAppointmentNumber } = require("./utils/appointmentNumber");
 require("dotenv").config();
 
 const app = express();
@@ -641,9 +643,10 @@ app.post("/appointments", authenticateToken, (req, res) => {
       }
 
       console.log(`[APPOINTMENT] Cart validation passed. Creating appointment...`);
+      const appointmentNumber = generateAppointmentNumber();
       db.query(
-        "INSERT INTO appointments (user_id, appointment_date, appointment_time) VALUES (?, ?, ?)",
-        [userId, appointment_date, appointment_time],
+        "INSERT INTO appointments (user_id, appointment_number, appointment_date, appointment_time) VALUES (?, ?, ?, ?)",
+        [userId, appointmentNumber, appointment_date, appointment_time],
         (err, result) => {
           if (err) {
             console.error('[APPOINTMENT] Error creating appointment:', err);
@@ -731,11 +734,12 @@ app.post("/checkout", authenticateToken, upload.single('receipt_file'), (req, re
 
       // Determine payment status based on payment method
       const paymentStatus = payment_method === 'cod' ? 'Unpaid' : 'Paid';
+      const orderNumber = generateOrderNumber();
 
       // Create order with new schema
       db.query(
-        "INSERT INTO orders (user_id, total_amount, installation_fee, payment_method, status, payment_status) VALUES (?, ?, ?, ?, ?, ?)",
-        [userId, subtotal, installationFee, payment_method, 'Pending', paymentStatus],
+        "INSERT INTO orders (user_id, order_number, total_amount, installation_fee, payment_method, status, payment_status) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        [userId, orderNumber, subtotal, installationFee, payment_method, 'Pending', paymentStatus],
         (err, orderResult) => {
           if (err) {
             console.error("Error creating order:", err);
@@ -795,6 +799,7 @@ app.post("/checkout", authenticateToken, upload.single('receipt_file'), (req, re
               res.json({
                 success: true,
                 orderId,
+                orderNumber,
                 totalAmount,
                 paymentStatus,
                 message: "Order created successfully"
@@ -840,9 +845,9 @@ app.get("/orders/:id", authenticateToken, (req, res) => {
 
       // Get order items
       db.query(
-        `SELECT oi.*, p.product_name, p.brand_name, p.model_name, p.image 
-         FROM order_items oi 
-         JOIN products p ON oi.product_id = p.id 
+        `SELECT oi.*, p.product_name, p.brand_name, p.model_name, p.image
+         FROM order_items oi
+         JOIN products p ON oi.product_id = p.id
          WHERE oi.order_id = ?`,
         [id],
         (err, items) => {
@@ -850,22 +855,97 @@ app.get("/orders/:id", authenticateToken, (req, res) => {
             return res.status(500).json({ error: "Failed to fetch order items" });
           }
 
-          // Get appointment if exists
+          // Get order details (address, room size, etc)
           db.query(
-            "SELECT * FROM appointments WHERE order_id = ? LIMIT 1",
+            "SELECT * FROM order_details WHERE order_id = ?",
             [id],
-            (err, appointments) => {
-              if (err) {
-                appointments = null;
-              }
+            (err, details) => {
+              details = (!err && details && details.length > 0) ? details[0] : null;
 
-              res.json({
-                order: {
-                  ...order,
-                  items: items,
-                  appointment: appointments ? appointments[0] : null
+              // Get appointment if exists - get the most recent one for this user
+              db.query(
+                "SELECT * FROM appointments WHERE user_id = ? ORDER BY created_at DESC LIMIT 1",
+                [userId],
+                (err, appointments) => {
+                  let appointmentData = (!err && appointments && appointments.length > 0) ? appointments[0] : null;
+
+                    if (appointmentData.assigned_employee_id) {
+                      db.query(
+                        "SELECT id, fname, lname, contact FROM user_signup WHERE id = ?",
+                        [appointmentData.assigned_employee_id],
+                        (err, technicians) => {
+                          if (!err && technicians.length > 0) {
+                            technicianData = technicians[0];
+                          }
+
+                          // Calculate subtotal
+                          const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+                          res.json({
+                            order: {
+                              ...order,
+                              items: items,
+                              address: details ? {
+                                house: details.house,
+                                barangay: details.barangay,
+                                city: details.city,
+                                province: details.province,
+                                zip: details.zip
+                              } : null,
+                              roomDetails: details ? {
+                                room_size: details.room_size,
+                                capacity: details.capacity,
+                                property_type: details.property_type
+                              } : null,
+                              appointment: appointmentData ? {
+                                id: appointmentData.id,
+                                date: appointmentData.appointment_date,
+                                time: appointmentData.appointment_time,
+                                number: appointmentData.appointment_number
+                              } : null,
+                              technician: technicianData ? {
+                                id: technicianData.id,
+                                name: `${technicianData.fname} ${technicianData.lname}`,
+                                contact: technicianData.contact
+                              } : null,
+                              subtotal: subtotal
+                            }
+                          });
+                        }
+                      );
+                    } else {
+                      // Calculate subtotal
+                      const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+                      res.json({
+                        order: {
+                          ...order,
+                          items: items,
+                          address: details ? {
+                            house: details.house,
+                            barangay: details.barangay,
+                            city: details.city,
+                            province: details.province,
+                            zip: details.zip
+                          } : null,
+                          roomDetails: details ? {
+                            room_size: details.room_size,
+                            capacity: details.capacity,
+                            property_type: details.property_type
+                          } : null,
+                          appointment: appointmentData ? {
+                            id: appointmentData.id,
+                            date: appointmentData.appointment_date,
+                            time: appointmentData.appointment_time,
+                            number: appointmentData.appointment_number
+                          } : null,
+                          technician: null,
+                          subtotal: subtotal
+                        }
+                      });
+                    }
                 }
-              });
+              );
             }
           );
         }
@@ -1010,7 +1090,7 @@ app.get("/admin/products", (req, res) => {
 // GET all orders (admin)
 app.get("/admin/orders", (req, res) => {
   db.query(
-    `SELECT o.id, o.user_id, o.total_amount, o.installation_fee, o.payment_method, o.status, o.payment_status, o.created_at,
+    `SELECT o.id, o.order_number, o.user_id, o.total_amount, o.installation_fee, o.payment_method, o.status, o.payment_status, o.created_at,
             u.fname, u.lname, u.email
      FROM orders o
      JOIN user_signup u ON o.user_id = u.id
@@ -1028,7 +1108,7 @@ app.get("/admin/orders", (req, res) => {
 // GET all appointments (admin)
 app.get("/admin/appointments", (req, res) => {
   db.query(
-    `SELECT a.id, a.user_id, a.appointment_date, a.appointment_time, a.created_at,
+    `SELECT a.id, a.appointment_number, a.user_id, a.appointment_date, a.appointment_time, a.created_at,
             u.fname, u.lname, u.email, u.contact
      FROM appointments a
      JOIN user_signup u ON a.user_id = u.id
@@ -1080,9 +1160,10 @@ app.get("/admin/low-stock-products", (req, res) => {
 // GET pending refund requests (admin)
 app.get("/admin/refund-requests", (req, res) => {
   db.query(
-    `SELECT r.id, r.order_id, r.amount, r.reason, r.status, r.created_at, u.fname, u.lname
+    `SELECT r.id, r.order_id, r.amount, r.reason, r.status, r.created_at, u.fname, u.lname, o.order_number
      FROM refund_requests r
      JOIN user_signup u ON r.user_id = u.id
+     LEFT JOIN orders o ON r.order_id = o.id
      ORDER BY r.created_at DESC`,
     (err, results) => {
       if (err) {

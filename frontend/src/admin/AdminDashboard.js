@@ -174,7 +174,7 @@ const AdminDashboard = () => {
                             <tbody>
                                 {recentOrders.map((order) => (
                                     <tr key={order.id} style={{ borderBottom: '1px solid #eee' }}>
-                                        <td style={{ padding: '12px', color: '#333' }}>#{order.id}</td>
+                                        <td style={{ padding: '12px', color: '#333' }}>{order.order_number}</td>
                                         <td style={{ padding: '12px', color: '#333' }}>{order.fname} {order.lname}</td>
                                         <td style={{ padding: '12px', color: '#666' }}>
                                             {new Date(order.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}

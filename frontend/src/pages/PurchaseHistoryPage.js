@@ -79,7 +79,7 @@ function PurchaseHistoryPage() {
               <div key={order.id} className="order-card">
                 <div className="order-header">
                   <div className="order-info">
-                    <h3>Order #{order.id}</h3>
+                    <h3>{order.order_number}</h3>
                     <p className="order-date">
                       {new Date(order.created_at).toLocaleDateString()}
                     </p>
