@@ -277,7 +277,7 @@ function AppointmentPage() {
             </div>
           )}
 
-          <div className="appointment-content" style={{ display: cartError ? 'none' : 'block' }}>
+          <div className="appointment-content" style={{ display: cartError ? 'none' : 'grid' }}>
             {showCalendar && (
               <div className="calendar-section">
                 <h3>Select Date</h3>

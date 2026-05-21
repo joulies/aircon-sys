@@ -733,8 +733,8 @@ app.post("/checkout", authenticateToken, upload.single('receipt_file'), (req, re
 
   // Get cart items and calculate total
   db.query(
-    `SELECT c.product_id, c.quantity, p.price, p.product_name, p.model_name FROM cart c 
-     JOIN products p ON c.product_id = p.id 
+    `SELECT c.product_id, c.quantity, p.price, p.product_name, p.model_name FROM cart c
+     JOIN products p ON c.product_id = p.id
      WHERE c.user_id = ?`,
     [userId],
     (err, cartItems) => {
@@ -750,14 +750,33 @@ app.post("/checkout", authenticateToken, upload.single('receipt_file'), (req, re
       const installationFee = 500; // Fixed fee
       const totalAmount = subtotal + installationFee;
 
+      // Calculate downpayment based on payment method
+      let downpaymentAmount = 0;
+      let balanceDue = 0;
+      let orderStatus = 'Pending';
+
+      if (payment_method === 'gcash' || payment_method === 'paymaya') {
+        // Online payment: 50% downpayment of products + full installation fee
+        downpaymentAmount = (subtotal * 0.5) + installationFee;
+        balanceDue = subtotal * 0.5;
+        orderStatus = 'Half Paid - Awaiting Confirmation'; // New status for receipt confirmation
+      } else if (payment_method === 'cod') {
+        // COD: User pays full amount on appointment date
+        downpaymentAmount = 0;
+        balanceDue = totalAmount;
+      }
+
       // Determine payment status based on payment method
-      const paymentStatus = payment_method === 'cod' ? 'Unpaid' : 'Paid';
+      const paymentStatus = payment_method === 'cod' ? 'Unpaid' : 'Pending Confirmation';
       const orderNumber = generateOrderNumber();
+
+      // Get receipt file path if uploaded
+      const receiptPath = req.file ? `/uploads/${req.file.filename}` : null;
 
       // Create order with new schema
       db.query(
-        "INSERT INTO orders (user_id, order_number, total_amount, installation_fee, payment_method, status, payment_status) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        [userId, orderNumber, subtotal, installationFee, payment_method, 'Pending', paymentStatus],
+        "INSERT INTO orders (user_id, order_number, total_amount, installation_fee, downpayment_amount, balance_due, payment_method, status, payment_status, proof_file) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        [userId, orderNumber, subtotal, installationFee, downpaymentAmount, balanceDue, payment_method, orderStatus, paymentStatus, receiptPath],
         (err, orderResult) => {
           if (err) {
             console.error("Error creating order:", err);
@@ -805,7 +824,7 @@ app.post("/checkout", authenticateToken, upload.single('receipt_file'), (req, re
               if (err) console.error("Error clearing cart:", err);
 
               // Add notification
-              const message = payment_method === 'cod' ? 'Order placed successfully! Awaiting payment.' : 'Order placed and paid successfully!';
+              const message = payment_method === 'cod' ? 'Order placed successfully! Awaiting payment.' : 'Order placed! Awaiting payment confirmation.';
               db.query(
                 "INSERT INTO notifications (user_id, message, notification_type) VALUES (?, ?, ?)",
                 [userId, message, 'success'],
@@ -819,6 +838,9 @@ app.post("/checkout", authenticateToken, upload.single('receipt_file'), (req, re
                 orderId,
                 orderNumber,
                 totalAmount,
+                downpaymentAmount,
+                balanceDue,
+                paymentMethod: payment_method,
                 paymentStatus,
                 message: "Order created successfully"
               });
@@ -1108,7 +1130,7 @@ app.get("/admin/products", (req, res) => {
 // GET all orders (admin)
 app.get("/admin/orders", (req, res) => {
   db.query(
-    `SELECT o.id, o.order_number, o.user_id, o.total_amount, o.installation_fee, o.payment_method, o.status, o.payment_status, o.created_at,
+    `SELECT o.id, o.order_number, o.user_id, o.total_amount, o.installation_fee, o.downpayment_amount, o.balance_due, o.payment_method, o.status, o.payment_status, o.created_at, o.proof_file,
             u.fname, u.lname, u.email
      FROM orders o
      JOIN user_signup u ON o.user_id = u.id
@@ -1121,6 +1143,280 @@ app.get("/admin/orders", (req, res) => {
       res.json(results);
     }
   );
+});
+
+// UPDATE order payment status (admin)
+app.put("/admin/orders/:id/update-payment-status", (req, res) => {
+  const { id } = req.params;
+  const { paymentStatus } = req.body;
+
+  if (!paymentStatus) {
+    return res.status(400).json({ success: false, message: "Payment status is required" });
+  }
+
+  db.query("SELECT * FROM orders WHERE id = ?", [id], (err, orders) => {
+    if (err || orders.length === 0) {
+      return res.status(404).json({ success: false, message: "Order not found" });
+    }
+
+    const order = orders[0];
+
+    // COD orders can't have payment status changed here (they pay on appointment date)
+    if (order.payment_method === 'cod' && paymentStatus === 'fully_paid') {
+      // For COD, mark fully paid only after appointment date
+      const fullyPaidDate = new Date();
+      db.query(
+        "UPDATE orders SET payment_status = ?, fully_paid_date = ? WHERE id = ?",
+        [paymentStatus, fullyPaidDate, id],
+        (err) => {
+          if (err) {
+            return res.status(500).json({ success: false, message: "Failed to update payment status" });
+          }
+          res.json({
+            success: true,
+            message: "Payment status updated successfully",
+            orderId: id,
+            paymentStatus: paymentStatus
+          });
+        }
+      );
+    } else {
+      // For online payments (gcash/paymaya), update payment status
+      const fullyPaidDate = paymentStatus === 'fully_paid' ? new Date() : null;
+      db.query(
+        "UPDATE orders SET payment_status = ?, fully_paid_date = ? WHERE id = ?",
+        [paymentStatus, fullyPaidDate, id],
+        (err) => {
+          if (err) {
+            return res.status(500).json({ success: false, message: "Failed to update payment status" });
+          }
+          res.json({
+            success: true,
+            message: "Payment status updated successfully",
+            orderId: id,
+            paymentStatus: paymentStatus
+          });
+        }
+      );
+    }
+  });
+});
+
+// CONFIRM receipt for GCash/PayMaya orders (admin)
+app.post("/admin/orders/:id/confirm-receipt", (req, res) => {
+  const { id } = req.params;
+
+  db.query("SELECT * FROM orders WHERE id = ?", [id], (err, orders) => {
+    if (err || orders.length === 0) {
+      return res.status(404).json({ success: false, message: "Order not found" });
+    }
+
+    const order = orders[0];
+
+    // Only allow confirmation for GCash/PayMaya orders
+    if (order.payment_method !== 'gcash' && order.payment_method !== 'paymaya') {
+      return res.status(400).json({ success: false, message: "Only GCash/PayMaya orders can have receipts confirmed" });
+    }
+
+    // Update order status to "Paid - Awaiting Assignment" and payment status to "Half Paid"
+    db.query(
+      "UPDATE orders SET status = ?, payment_status = ? WHERE id = ?",
+      ['Paid - Awaiting Assignment', 'Half Paid', id],
+      (err) => {
+        if (err) {
+          return res.status(500).json({ success: false, message: "Failed to confirm receipt" });
+        }
+
+        // Add notification to user
+        db.query(
+          "INSERT INTO notifications (user_id, message, notification_type) VALUES (?, ?, ?)",
+          [order.user_id, 'Your payment receipt has been confirmed by admin. An employee will be assigned soon for installation.', 'success'],
+          (err) => {
+            if (err) console.error("Error creating notification:", err);
+          }
+        );
+
+        res.json({
+          success: true,
+          message: "Receipt confirmed successfully",
+          orderId: id,
+          status: 'Paid - Awaiting Assignment'
+        });
+      }
+    );
+  });
+});
+
+// REJECT receipt for GCash/PayMaya orders (admin)
+app.post("/admin/orders/:id/reject-receipt", (req, res) => {
+  const { id } = req.params;
+  const { reason } = req.body;
+
+  db.query("SELECT * FROM orders WHERE id = ?", [id], (err, orders) => {
+    if (err || orders.length === 0) {
+      return res.status(404).json({ success: false, message: "Order not found" });
+    }
+
+    const order = orders[0];
+
+    // Only allow rejection for GCash/PayMaya orders
+    if (order.payment_method !== 'gcash' && order.payment_method !== 'paymaya') {
+      return res.status(400).json({ success: false, message: "Only GCash/PayMaya orders can be rejected" });
+    }
+
+    // Update order status to "Payment Rejected" and payment status to "Rejected"
+    db.query(
+      "UPDATE orders SET status = ?, payment_status = ? WHERE id = ?",
+      ['Payment Rejected', 'Rejected', id],
+      (err) => {
+        if (err) {
+          return res.status(500).json({ success: false, message: "Failed to reject receipt" });
+        }
+
+        // Build rejection message
+        const reasonText = reason ? ` Reason: ${reason}` : '';
+        const notificationMessage = `Your payment has been rejected and needs resubmission.${reasonText} Please contact support for more information.`;
+
+        // Add notification to user
+        db.query(
+          "INSERT INTO notifications (user_id, message, notification_type) VALUES (?, ?, ?)",
+          [order.user_id, notificationMessage, 'warning'],
+          (err) => {
+            if (err) console.error("Error creating notification:", err);
+          }
+        );
+
+        res.json({
+          success: true,
+          message: "Receipt rejected successfully",
+          orderId: id,
+          status: 'Payment Rejected'
+        });
+      }
+    );
+  });
+});
+
+// GET all pending receipt confirmations (admin)
+app.get("/admin/orders/pending-receipts", (req, res) => {
+  db.query(
+    `SELECT o.id, o.order_number, o.user_id, o.total_amount, o.downpayment_amount, o.payment_method, o.status, o.payment_status, o.created_at, o.proof_file,
+            u.fname, u.lname, u.email
+     FROM orders o
+     JOIN user_signup u ON o.user_id = u.id
+     WHERE (o.payment_method = 'gcash' OR o.payment_method = 'paymaya') AND o.status = 'Half Paid - Awaiting Confirmation'
+     ORDER BY o.created_at DESC`,
+    (err, results) => {
+      if (err) {
+        console.error("Error fetching pending receipts:", err);
+        return res.status(500).json({ error: "Failed to fetch pending receipts" });
+      }
+      res.json(results);
+    }
+  );
+});
+
+// GET all orders awaiting employee assignment (admin)
+app.get("/admin/orders/awaiting-assignment", (req, res) => {
+  db.query(
+    `SELECT o.id, o.order_number, o.user_id, o.total_amount, o.payment_method, o.status, o.payment_status, o.created_at,
+            u.fname, u.lname, u.email, u.contact
+     FROM orders o
+     JOIN user_signup u ON o.user_id = u.id
+     WHERE o.status = 'Paid - Awaiting Assignment' OR (o.payment_method = 'cod' AND o.status = 'Pending')
+     ORDER BY o.created_at DESC`,
+    (err, results) => {
+      if (err) {
+        console.error("Error fetching orders awaiting assignment:", err);
+        return res.status(500).json({ error: "Failed to fetch orders" });
+      }
+      res.json(results);
+    }
+  );
+});
+
+// GET all employees (for admin assignment)
+app.get("/admin/employees", (req, res) => {
+  db.query(
+    "SELECT id, fname, lname, email, contact FROM user_signup WHERE role = 'employee' ORDER BY fname ASC",
+    (err, results) => {
+      if (err) {
+        console.error("Error fetching employees:", err);
+        return res.status(500).json({ error: "Failed to fetch employees" });
+      }
+      res.json(results);
+    }
+  );
+});
+
+// ASSIGN employee to order (admin)
+app.post("/admin/orders/:id/assign-employee", (req, res) => {
+  const { id } = req.params;
+  const { employee_id } = req.body;
+
+  if (!employee_id) {
+    return res.status(400).json({ success: false, message: "Employee ID is required" });
+  }
+
+  db.query("SELECT * FROM orders WHERE id = ?", [id], (err, orders) => {
+    if (err || orders.length === 0) {
+      return res.status(404).json({ success: false, message: "Order not found" });
+    }
+
+    const order = orders[0];
+
+    // Check if order is ready for assignment
+    const isReadyForAssignment = order.status === 'Paid - Awaiting Assignment' ||
+                                  (order.payment_method === 'cod' && order.status === 'Pending');
+
+    if (!isReadyForAssignment) {
+      return res.status(400).json({ success: false, message: "Order is not ready for employee assignment" });
+    }
+
+    // Update order status and add appointment
+    db.query(
+      "UPDATE orders SET status = ? WHERE id = ?",
+      ['Ready for Installation', id],
+      (err) => {
+        if (err) {
+          return res.status(500).json({ success: false, message: "Failed to assign employee" });
+        }
+
+        // Create appointment record with employee
+        const appointmentNumber = generateAppointmentNumber();
+        db.query(
+          "INSERT INTO appointments (appointment_number, order_id, user_id, appointment_date, appointment_time, assigned_employee_id) VALUES (?, ?, ?, ?, ?, ?)",
+          [appointmentNumber, id, order.user_id, new Date(), '00:00', employee_id],
+          (err) => {
+            if (err) {
+              return res.status(500).json({ success: false, message: "Failed to create appointment" });
+            }
+
+            // Add notification to user
+            const notificationMessage = order.payment_method === 'cod'
+              ? 'An employee has been assigned for your installation. Please prepare payment for the appointment date. You will receive the appointment details soon.'
+              : 'An employee has been assigned for your installation. You will receive the appointment details soon.';
+
+            db.query(
+              "INSERT INTO notifications (user_id, message, notification_type) VALUES (?, ?, ?)",
+              [order.user_id, notificationMessage, 'info'],
+              (err) => {
+                if (err) console.error("Error creating notification:", err);
+              }
+            );
+
+            res.json({
+              success: true,
+              message: "Employee assigned successfully",
+              orderId: id,
+              appointmentNumber: appointmentNumber,
+              status: 'Ready for Installation'
+            });
+          }
+        );
+      }
+    );
+  });
 });
 
 // GET all appointments (admin)

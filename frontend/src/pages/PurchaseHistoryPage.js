@@ -186,6 +186,34 @@ function PurchaseHistoryPage() {
                   </p>
                 </>
               )}
+
+              {(selectedOrder.payment_method?.toLowerCase() === 'gcash' || selectedOrder.payment_method?.toLowerCase() === 'paymaya') && (
+                <>
+                  <h3 style={{ marginTop: '20px' }}>💳 Payment Breakdown (50/50)</h3>
+                  <div style={{ backgroundColor: '#f0f7ff', padding: '12px', borderRadius: '6px', border: '1px solid #d4e8f7' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '13px' }}>
+                      <span>50% of Products:</span>
+                      <span style={{ color: '#2c6d91', fontWeight: '500' }}>₱ {(parseFloat(selectedOrder.subtotal) * 0.5).toFixed(2)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '13px' }}>
+                      <span>Installation Fee:</span>
+                      <span style={{ color: '#2c6d91', fontWeight: '500' }}>₱ {parseFloat(selectedOrder.installation_fee).toFixed(2)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#fff', fontWeight: '600', backgroundColor: '#2c6d91', padding: '8px 6px', borderRadius: '4px', marginBottom: '10px' }}>
+                      <span>Downpayment Due Now:</span>
+                      <span>₱ {((parseFloat(selectedOrder.subtotal) * 0.5) + parseFloat(selectedOrder.installation_fee)).toFixed(2)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
+                      <span>Remaining 50% of Products:</span>
+                      <span style={{ color: '#2c6d91', fontWeight: '500' }}>₱ {(parseFloat(selectedOrder.subtotal) * 0.5).toFixed(2)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#fff', fontWeight: '600', backgroundColor: '#5a8fb3', padding: '8px 6px', borderRadius: '4px' }}>
+                      <span>Balance Due on Appointment:</span>
+                      <span>₱ {(parseFloat(selectedOrder.subtotal) * 0.5).toFixed(2)}</span>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="modal-footer">

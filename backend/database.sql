@@ -55,10 +55,13 @@ CREATE TABLE IF NOT EXISTS orders (
   order_number VARCHAR(50) UNIQUE DEFAULT NULL,
   total_amount DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
   installation_fee DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
+  downpayment_amount DECIMAL(12, 2) DEFAULT 0.00,
+  balance_due DECIMAL(12, 2) DEFAULT 0.00,
   payment_method VARCHAR(50) NOT NULL,
-  status VARCHAR(30) NOT NULL DEFAULT 'Pending',
-  payment_status VARCHAR(30) DEFAULT 'Unpaid',
+  status VARCHAR(50) NOT NULL DEFAULT 'Pending',
+  payment_status VARCHAR(50) DEFAULT 'Unpaid',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  fully_paid_date DATETIME DEFAULT NULL,
   proof_file VARCHAR(255) DEFAULT NULL
 );
 

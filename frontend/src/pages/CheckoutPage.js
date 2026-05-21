@@ -144,6 +144,27 @@ function CheckoutPage() {
     return cartItems.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
   };
 
+  const calculateDownpayment = () => {
+    const subtotal = calculateSubtotal();
+    const installFee = 500;
+
+    if (formData.payment_method === 'gcash' || formData.payment_method === 'paymaya') {
+      return (subtotal * 0.5) + installFee;
+    } else if (formData.payment_method === 'cod') {
+      return subtotal + installFee;
+    }
+    return 0;
+  };
+
+  const calculateBalance = () => {
+    const subtotal = calculateSubtotal();
+
+    if (formData.payment_method === 'gcash' || formData.payment_method === 'paymaya') {
+      return subtotal * 0.5;
+    }
+    return 0;
+  };
+
   const installationFee = 500;
   const subtotal = calculateSubtotal();
   const total = subtotal + installationFee;
@@ -402,17 +423,76 @@ function CheckoutPage() {
 
             <div className="summary-total">
               <div className="total-row">
-                <span>Subtotal:</span>
+                <span>Subtotal (Products):</span>
                 <span>₱ {subtotal.toFixed(2)}</span>
               </div>
               <div className="total-row">
                 <span>Installation Fee:</span>
                 <span>₱ {installationFee.toFixed(2)}</span>
               </div>
-              <div className="total-row final">
-                <strong>Total:</strong>
-                <strong>₱ {total.toFixed(2)}</strong>
-              </div>
+
+              {(formData.payment_method === 'gcash' || formData.payment_method === 'paymaya') && (
+                <>
+                  <hr style={{ margin: '10px 0', borderColor: '#e0e0e0' }} />
+                  <div style={{ backgroundColor: '#f0f7ff', padding: '12px', borderRadius: '6px', marginBottom: '12px', border: '1px solid #d4e8f7' }}>
+                    <h4 style={{ margin: '0 0 12px 0', color: '#2c6d91', fontSize: '14px', fontWeight: '600' }}>💳 Payment Breakdown (50/50)</h4>
+
+                    <div className="total-row" style={{ fontSize: '13px', marginBottom: '6px', color: '#555' }}>
+                      <span>50% of Products:</span>
+                      <span style={{ color: '#2c6d91' }}>₱ {(subtotal * 0.5).toFixed(2)}</span>
+                    </div>
+
+                    <div className="total-row" style={{ fontSize: '13px', marginBottom: '10px', color: '#555' }}>
+                      <span>Installation Fee:</span>
+                      <span style={{ color: '#2c6d91' }}>₱ {installationFee.toFixed(2)}</span>
+                    </div>
+
+                    <div className="total-row" style={{ color: '#fff', fontWeight: '600', backgroundColor: '#2c6d91', padding: '8px 6px', borderRadius: '4px', marginBottom: '10px' }}>
+                      <span>Downpayment Due Now:</span>
+                      <span>₱ {calculateDownpayment().toFixed(2)}</span>
+                    </div>
+
+                    <div className="total-row" style={{ fontSize: '13px', color: '#555', marginBottom: '6px' }}>
+                      <span>Remaining 50% of Products:</span>
+                      <span style={{ color: '#2c6d91' }}>₱ {calculateBalance().toFixed(2)}</span>
+                    </div>
+
+                    <div className="total-row" style={{ color: '#fff', fontWeight: '600', backgroundColor: '#5a8fb3', padding: '8px 6px', borderRadius: '4px' }}>
+                      <span>Balance Due on Appointment:</span>
+                      <span>₱ {calculateBalance().toFixed(2)}</span>
+                    </div>
+                  </div>
+
+                  <div className="total-row final" style={{ color: '#2c6d91', fontWeight: 'bold', fontSize: '15px' }}>
+                    <strong>Grand Total:</strong>
+                    <strong>₱ {(calculateDownpayment() + calculateBalance()).toFixed(2)}</strong>
+                  </div>
+
+                  <p style={{ fontSize: '0.85em', color: '#888', marginTop: '8px', fontStyle: 'italic', margin: '8px 0 0 0' }}>
+                    * Full amount must be paid before installation is completed
+                  </p>
+                </>
+              )}
+
+              {formData.payment_method === 'cod' && (
+                <>
+                  <hr style={{ margin: '10px 0', borderColor: '#e0e0e0' }} />
+                  <div className="total-row final" style={{ color: '#2c6d91', fontWeight: 'bold' }}>
+                    <strong>Total Due on Appointment Date:</strong>
+                    <strong>₱ {calculateDownpayment().toFixed(2)}</strong>
+                  </div>
+                  <p style={{ fontSize: '0.85em', color: '#888', marginTop: '8px', fontStyle: 'italic', margin: '8px 0 0 0' }}>
+                    * Payment required after installation is completed
+                  </p>
+                </>
+              )}
+
+              {(formData.payment_method !== 'gcash' && formData.payment_method !== 'paymaya' && formData.payment_method !== 'cod') && (
+                <div className="total-row final">
+                  <strong>Total:</strong>
+                  <strong>₱ {total.toFixed(2)}</strong>
+                </div>
+              )}
             </div>
 
             <button className="print-btn" onClick={handlePrint}>

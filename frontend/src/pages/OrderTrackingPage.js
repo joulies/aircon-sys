@@ -310,6 +310,41 @@ function OrderTrackingPage() {
               <span>Installation Fee:</span>
               <span>₱ {order.installation_fee ? parseFloat(order.installation_fee).toFixed(2) : '0.00'}</span>
             </div>
+
+            {(order.payment_method?.toLowerCase() === 'gcash' || order.payment_method?.toLowerCase() === 'paymaya') && (
+              <>
+                <hr style={{ margin: '12px 0', borderColor: '#e0e0e0' }} />
+                <div style={{ backgroundColor: '#f0f7ff', padding: '12px', borderRadius: '6px', marginBottom: '12px', border: '1px solid #d4e8f7' }}>
+                  <h4 style={{ margin: '0 0 12px 0', color: '#2c6d91', fontSize: '14px', fontWeight: '600' }}>💳 Payment Breakdown (50/50)</h4>
+
+                  <div className="summary-line" style={{ fontSize: '13px', marginBottom: '6px', color: '#555' }}>
+                    <span>50% of Products:</span>
+                    <span style={{ color: '#2c6d91' }}>₱ {(parseFloat(order.subtotal) * 0.5).toFixed(2)}</span>
+                  </div>
+
+                  <div className="summary-line" style={{ fontSize: '13px', marginBottom: '10px', color: '#555' }}>
+                    <span>Installation Fee:</span>
+                    <span style={{ color: '#2c6d91' }}>₱ {parseFloat(order.installation_fee).toFixed(2)}</span>
+                  </div>
+
+                  <div className="summary-line" style={{ color: '#fff', fontWeight: '600', backgroundColor: '#2c6d91', padding: '8px 6px', borderRadius: '4px', marginBottom: '10px' }}>
+                    <span>Downpayment Due Now:</span>
+                    <span>₱ {((parseFloat(order.subtotal) * 0.5) + parseFloat(order.installation_fee)).toFixed(2)}</span>
+                  </div>
+
+                  <div className="summary-line" style={{ fontSize: '13px', color: '#555', marginBottom: '6px' }}>
+                    <span>Remaining 50% of Products:</span>
+                    <span style={{ color: '#2c6d91' }}>₱ {(parseFloat(order.subtotal) * 0.5).toFixed(2)}</span>
+                  </div>
+
+                  <div className="summary-line" style={{ color: '#fff', fontWeight: '600', backgroundColor: '#5a8fb3', padding: '8px 6px', borderRadius: '4px' }}>
+                    <span>Balance Due on Appointment:</span>
+                    <span>₱ {(parseFloat(order.subtotal) * 0.5).toFixed(2)}</span>
+                  </div>
+                </div>
+              </>
+            )}
+
             <div className="summary-line total">
               <strong>Total Amount:</strong>
               <strong>₱ {parseFloat(order.total_amount).toFixed(2)}</strong>
