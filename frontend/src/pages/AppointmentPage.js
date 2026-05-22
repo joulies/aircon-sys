@@ -27,6 +27,21 @@ const authHeaders = () => ({
   Authorization: `Bearer ${localStorage.getItem('authToken')}`,
 });
 
+// ─── Philippine Time helpers (UTC+8) ─────────────────────────────────────────
+const getPhToday = () => {
+  const now = new Date();
+  const utcMs = now.getTime() + now.getTimezoneOffset() * 60000;
+  const phDate = new Date(utcMs + 8 * 60 * 60 * 1000);
+  phDate.setHours(0, 0, 0, 0);
+  return phDate;
+};
+
+const toLocalDateStr = (year, month, day) => {
+  const mm = String(month + 1).padStart(2, '0');
+  const dd = String(day).padStart(2, '0');
+  return `${year}-${mm}-${dd}`;
+};
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function DatePicker({ currentMonth, selectedDate, dateAvailability, calendarLoading, onDateClick, onPrevMonth, onNextMonth }) {
@@ -34,8 +49,7 @@ function DatePicker({ currentMonth, selectedDate, dateAvailability, calendarLoad
   const month = currentMonth.getMonth();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const firstDay = new Date(year, month, 1).getDay();
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = getPhToday();
 
   const days = [
     ...Array(firstDay).fill(null),
@@ -49,7 +63,7 @@ function DatePicker({ currentMonth, selectedDate, dateAvailability, calendarLoad
     const dateToCheck = new Date(year, month, day);
     if (dateToCheck <= today) return 'calendar-day disabled-past';
 
-    const dateStr = new Date(year, month, day).toISOString().split('T')[0];
+    const dateStr = toLocalDateStr(year, month, day);
     const avail = dateAvailability[dateStr];
 
     let cls = 'calendar-day';
@@ -64,7 +78,7 @@ function DatePicker({ currentMonth, selectedDate, dateAvailability, calendarLoad
     if (!day) return true;
     const dateToCheck = new Date(year, month, day);
     if (dateToCheck <= today) return true;
-    const dateStr = new Date(year, month, day).toISOString().split('T')[0];
+    const dateStr = toLocalDateStr(year, month, day);
     return dateAvailability[dateStr]?.is_fully_booked === true;
   };
 
@@ -113,7 +127,7 @@ function DatePicker({ currentMonth, selectedDate, dateAvailability, calendarLoad
             disabled={isDisabled(day)}
             title={
               day
-                ? dateAvailability[new Date(year, month, day).toISOString().split('T')[0]]?.is_fully_booked
+                ? dateAvailability[toLocalDateStr(year, month, day)]?.is_fully_booked
                   ? 'Fully booked'
                   : 'Click to select'
                 : ''
@@ -273,7 +287,6 @@ function AppointmentPage() {
   const [cartError, setCartError] = useState(null);
 
   // Booking state
-  const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
   const [bookedSlots, setBookedSlots] = useState([]); // [{ date: 'YYYY-MM-DD', time: '08:00' }]
@@ -284,10 +297,10 @@ function AppointmentPage() {
       const res = await fetch(`${API}/appointments`, { headers: authHeaders() });
       if (!res.ok) return;
       const data = await res.json();
-      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const today = getPhToday();
       // Store all upcoming booked date+time pairs
       const slots = (data.appointments || [])
-        .filter(a => new Date(a.appointment_date) >= today)
+        .filter(a => new Date(a.appointment_date + 'T00:00:00') >= today)
         .map(a => ({
           date: a.appointment_date.split('T')[0],
           time: a.appointment_time,
@@ -331,13 +344,15 @@ function AppointmentPage() {
     const year = month.getFullYear();
     const mo = month.getMonth();
     const daysInMonth = new Date(year, mo + 1, 0).getDate();
-    const today = new Date(); today.setHours(0,0,0,0);
+    const today = getPhToday();
 
     // Collect future dates only
     const futureDates = [];
     for (let d = 1; d <= daysInMonth; d++) {
       const dateObj = new Date(year, mo, d);
-      if (dateObj > today) futureDates.push(dateObj.toISOString().split('T')[0]);
+      if (dateObj > today) {
+        futureDates.push(toLocalDateStr(year, mo, d));
+      }
     }
 
     // Fetch in batches of 5 to avoid flooding the backend
@@ -379,7 +394,7 @@ function AppointmentPage() {
   }, []);
 
   const fetchDateSlots = async (date) => {
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = toLocalDateStr(date.getFullYear(), date.getMonth(), date.getDate());
     try {
       const res = await fetch(`${API}/appointments/available-slots/${dateStr}`);
       if (!res.ok) {
@@ -449,7 +464,7 @@ function AppointmentPage() {
     setSelectedDate(selected);
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!selectedDate || !selectedTime) {
       setErrorMessage('Please select both a date and a time slot.');
       return;
@@ -458,62 +473,37 @@ function AppointmentPage() {
       setErrorMessage('Please fix your cart before booking.');
       return;
     }
-    // Block only if this exact date+time is already booked by the user
-    const selectedDateStr = selectedDate.toISOString().split('T')[0];
-    const selectedTime24 = to24h(selectedTime);
-    const conflict = bookedSlots.find(s => s.date === selectedDateStr && s.time === selectedTime24);
+
+    const apptDateStr = toLocalDateStr(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+    const apptTime24 = to24h(selectedTime);
+    const conflict = bookedSlots.find(s => s.date === apptDateStr && s.time === apptTime24);
     if (conflict) {
-      setErrorMessage(
-        `You already have an appointment on ${selectedDate.toDateString()} at ${selectedTime}. Please choose a different date or time.`
-      );
+      setErrorMessage(`You already have an appointment on ${selectedDate.toDateString()} at ${selectedTime}. Please choose a different date or time.`);
       return;
     }
 
-    setLoading(true);
-    setErrorMessage(null);
-    setSuccessMessage(null);
+    // Store in sessionStorage — appointment is NOT saved to DB yet.
+    // It will be recorded when the user confirms at checkout.
+    sessionStorage.setItem('pendingAppointment', JSON.stringify({
+      appointment_date: apptDateStr,
+      appointment_time: apptTime24,
+      display_date: selectedDate.toDateString(),
+      display_time: selectedTime,
+    }));
 
-    try {
-      const res = await fetch(`${API}/appointments`, {
-        method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify({
-          appointment_date: selectedDate.toISOString().split('T')[0],
-          appointment_time: to24h(selectedTime),
-        }),
-      });
-
-      const data = await res.json();
-
-      if (res.ok && data.success) {
-        setSuccessMessage(`Appointment selected. Please proceed to checkout.`);
-        // Refresh slot status to reflect the new booking
-        fetchDateSlots(selectedDate);
-        // Navigate to checkout after a short delay
-        setTimeout(() => navigate('/checkout'), 1800);
-      } else {
-        setErrorMessage(data.message || 'Failed to book appointment. Please try again.');
-        // If slot just got taken, refresh availability
-        fetchDateSlots(selectedDate);
-        fetchMonthAvailability(currentMonth);
-      }
-    } catch (err) {
-      setErrorMessage('Network error: ' + err.message);
-    } finally {
-      setLoading(false);
-    }
+    setSuccessMessage('Appointment selected. Please proceed to checkout.');
+    setTimeout(() => navigate('/checkout'), 1200);
   };
 
   // ─────────────────────────────────────────────────────────────────────────
 
-  const selectedDateStr = selectedDate ? selectedDate.toISOString().split('T')[0] : null;
+  const selectedDateStr = selectedDate ? toLocalDateStr(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate()) : null;
   const selectedTime24 = selectedTime ? to24h(selectedTime) : null;
   const hasConflict = !!(selectedDateStr && selectedTime24 &&
     bookedSlots.find(s => s.date === selectedDateStr && s.time === selectedTime24));
 
   const canSubmit =
     !cartError &&
-    !loading &&
     !hasConflict &&
     selectedDate &&
     selectedTime &&
@@ -607,8 +597,18 @@ function AppointmentPage() {
                 <ConfirmationMessage date={selectedDate} time={selectedTime} />
               )}
 
-              {/* Error message */}
-              {errorMessage && (
+              {/* Conflict warning — shown reactively when selected slot matches an existing booking */}
+              {hasConflict && !successMessage && (
+                <div style={{
+                  background: '#fff3cd', border: '1px solid #ffc107', borderRadius: 6,
+                  padding: '12px 16px', marginBottom: 16, color: '#856404', fontSize: 14
+                }}>
+                  ⚠ You already have an appointment at this date and time. Please choose a different slot.
+                </div>
+              )}
+
+              {/* General error message */}
+              {errorMessage && !hasConflict && (
                 <div style={{
                   background: '#f8d7da', border: '1px solid #f5c6cb', borderRadius: 6,
                   padding: '12px 16px', marginBottom: 16, color: '#721c24', fontSize: 14
@@ -626,7 +626,7 @@ function AppointmentPage() {
                   cursor: canSubmit ? 'pointer' : 'not-allowed',
                 }}
               >
-                {loading ? 'Booking...' : 'Continue to Checkout'}
+                {`Continue to Checkout`}
               </button>
             </>
           )}

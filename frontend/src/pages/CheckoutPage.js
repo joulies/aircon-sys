@@ -109,7 +109,7 @@ function CheckoutPage() {
       navigate('/appointment');
     }
     loadCheckoutData();
-  }, []);
+  }, [navigate]);
 
   const loadCheckoutData = async () => {
     try {
