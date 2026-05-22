@@ -12,16 +12,11 @@ function AppointmentPage() {
   const [cartItems, setCartItems] = useState([]);
   const [cartError, setCartError] = useState(null);
   const [dateAvailability, setDateAvailability] = useState({}); // Track availability for each date
-  const [loadingAvailability, setLoadingAvailability] = useState(false);
   const [availabilityError, setAvailabilityError] = useState(null);
   const [availableTechs, setAvailableTechs] = useState([]);
   const showCalendar = true;
 
   const timeSlots = ['8:00 AM', '1:00 PM'];
-  const timeSlotMap = {
-    '8:00 AM': '08:00',
-    '1:00 PM': '13:00'
-  };
 
   useEffect(() => {
     validateCart();
@@ -40,11 +35,7 @@ function AppointmentPage() {
   }, [selectedDate]);
 
   const fetchMonthAvailability = async (month) => {
-    setLoadingAvailability(true);
     try {
-      const firstDay = new Date(month.getFullYear(), month.getMonth(), 1);
-      const lastDay = new Date(month.getFullYear(), month.getMonth() + 1, 0);
-      
       const availability = {};
       
       // Fetch availability for first and a few sample days to determine month status
@@ -72,8 +63,6 @@ function AppointmentPage() {
       setDateAvailability(availability);
     } catch (err) {
       console.error('[AppointmentPage] Error fetching month availability:', err);
-    } finally {
-      setLoadingAvailability(false);
     }
   };
 

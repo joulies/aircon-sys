@@ -634,6 +634,25 @@ app.post("/appointments", authenticateToken, async (req, res) => {
   }
 
   try {
+    // Check if user already has an appointment at this date/time
+    const userAppointmentCheck = await new Promise((resolve) => {
+      db.query(
+        "SELECT id FROM appointments WHERE user_id = ? AND appointment_date = ? AND appointment_time = ?",
+        [userId, appointment_date, appointment_time],
+        (err, results) => {
+          resolve(err ? false : (results && results.length > 0));
+        }
+      );
+    });
+
+    if (userAppointmentCheck) {
+      console.warn(`[APPOINTMENT] User ${userId} already has an appointment on ${appointment_date} at ${appointment_time}`);
+      return res.status(400).json({ 
+        success: false, 
+        message: `You already have an appointment on ${appointment_date} at ${appointment_time}`
+      });
+    }
+
     // Check availability before proceeding
     const isDateFullyBooked = await appointmentAvailability.isDateFullyBooked(db, appointment_date);
     const slots = await appointmentAvailability.getAvailableTimeSlots(db);
@@ -703,12 +722,53 @@ app.post("/appointments", authenticateToken, async (req, res) => {
         db.query(
           "INSERT INTO appointments (user_id, appointment_number, appointment_date, appointment_time) VALUES (?, ?, ?, ?)",
           [userId, appointmentNumber, appointment_date, appointment_time],
-          (err, result) => {
+          async (err, result) => {
             if (err) {
               console.error('[APPOINTMENT] Error creating appointment:', err);
               return res.status(500).json({ success: false, message: "Failed to create appointment" });
             }
+            
             console.log(`[APPOINTMENT] Appointment created successfully with ID ${result.insertId}`);
+            
+            // Auto-mark this slot as unavailable for ALL technicians (first user booked it)
+            try {
+              // Get ALL employees, not just available ones
+              db.query(
+                "SELECT id FROM user_signup WHERE role = 'employee'",
+                async (err, allEmployees) => {
+                  if (!err && allEmployees) {
+                    for (const employee of allEmployees) {
+                      await appointmentAvailability.markSlotAsUnavailable(db, employee.id, appointment_date, appointment_time);
+                    }
+                  }
+                  console.log(`[APPOINTMENT] Slot ${appointment_time} on ${appointment_date} blocked for all technicians`);
+                  
+                  // Handle single technician scenario
+                  if (availableTechs.length === 1) {
+                    const technicianId = availableTechs[0].id;
+                    const appointmentCount = await appointmentAvailability.countAppointmentsOnDate(db, technicianId, appointment_date);
+                    const maxAppointments = await appointmentAvailability.getMaxAppointmentsPerDay(db);
+                    
+                    // If this technician's day is now full, mark all remaining slots as unavailable
+                    if (appointmentCount >= maxAppointments) {
+                      const allSlots = await appointmentAvailability.getAvailableTimeSlots(db);
+                      for (const slot of allSlots) {
+                        const isBooked = await appointmentAvailability.isTimeSlotBooked(db, appointment_date, slot);
+                        if (!isBooked) {
+                          for (const employee of allEmployees) {
+                            await appointmentAvailability.markSlotAsUnavailable(db, employee.id, appointment_date, slot);
+                          }
+                        }
+                      }
+                      console.log(`[APPOINTMENT] Single technician's day is full. All slots blocked for all technicians.`);
+                    }
+                  }
+                }
+              );
+            } catch (slotErr) {
+              console.error('[APPOINTMENT] Warning: Could not mark slot as unavailable:', slotErr);
+            }
+            
             res.json({ 
               success: true, 
               id: result.insertId, 
@@ -802,6 +862,19 @@ app.post("/appointments/check-availability", async (req, res) => {
   }
 
   try {
+    // Check if this time is already booked by any user
+    const timeBooked = await appointmentAvailability.isTimeSlotBooked(db, appointment_date, appointment_time);
+    
+    if (timeBooked) {
+      return res.status(400).json({
+        success: false,
+        message: `Time ${appointment_time} on ${appointment_date} is already booked`,
+        is_booked: true,
+        date: appointment_date,
+        time: appointment_time
+      });
+    }
+
     let response = {};
 
     if (technician_id) {
@@ -850,12 +923,14 @@ app.get("/appointments/available-slots/:date", async (req, res) => {
   try {
     const slots = await appointmentAvailability.getAvailableSlotsForDate(db, date);
     const isFullyBooked = await appointmentAvailability.isDateFullyBooked(db, date);
+    const bookedTimes = await appointmentAvailability.getBookedTimesForDate(db, date);
 
     res.json({
       success: true,
       date,
       is_fully_booked: isFullyBooked,
       slots,
+      booked_times: bookedTimes,
       available_times: await appointmentAvailability.getAvailableTimeSlots(db)
     });
   } catch (err) {

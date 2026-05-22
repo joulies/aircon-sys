@@ -38,18 +38,32 @@ async function isSlotAvailable(db, technicianId, date, time) {
       return;
     }
 
-    // Check if the slot is marked as unavailable
+    // First check if the time slot is already booked by any user
     db.query(
-      `SELECT is_available FROM appointment_slots 
-       WHERE technician_id = ? AND appointment_date = ? AND appointment_time = ?`,
-      [technicianId, date, time],
-      (err, results) => {
-        if (err || !results || results.length === 0) {
-          // Slot doesn't exist yet, so it should be available
-          resolve(true);
-        } else {
-          resolve(results[0].is_available === 1);
+      `SELECT COUNT(*) as count FROM appointments 
+       WHERE appointment_date = ? AND appointment_time = ?`,
+      [date, time],
+      (err, appointmentResults) => {
+        if (err || (appointmentResults && appointmentResults[0].count > 0)) {
+          // Time slot already booked, not available
+          resolve(false);
+          return;
         }
+
+        // Check if the slot is marked as unavailable
+        db.query(
+          `SELECT is_available FROM appointment_slots 
+           WHERE technician_id = ? AND appointment_date = ? AND appointment_time = ?`,
+          [technicianId, date, time],
+          (err, results) => {
+            if (err || !results || results.length === 0) {
+              // Slot doesn't exist yet and time is not booked, so it should be available
+              resolve(true);
+            } else {
+              resolve(results[0].is_available === 1);
+            }
+          }
+        );
       }
     );
   });
@@ -266,6 +280,42 @@ async function isDateFullyBooked(db, date) {
   });
 }
 
+// Get all booked times for a specific date
+async function getBookedTimesForDate(db, date) {
+  return new Promise((resolve) => {
+    db.query(
+      `SELECT DISTINCT appointment_time FROM appointments 
+       WHERE appointment_date = ?`,
+      [date],
+      (err, results) => {
+        if (err || !results) {
+          resolve([]);
+        } else {
+          resolve(results.map(r => r.appointment_time));
+        }
+      }
+    );
+  });
+}
+
+// Check if a specific date/time has ANY appointment (first user booked it)
+async function isTimeSlotBooked(db, date, time) {
+  return new Promise((resolve) => {
+    db.query(
+      `SELECT COUNT(*) as count FROM appointments 
+       WHERE appointment_date = ? AND appointment_time = ?`,
+      [date, time],
+      (err, results) => {
+        if (err || !results) {
+          resolve(false);
+        } else {
+          resolve(results[0].count > 0);
+        }
+      }
+    );
+  });
+}
+
 module.exports = {
   getConfigValue,
   getAvailableTimeSlots,
@@ -277,5 +327,7 @@ module.exports = {
   markSlotAsUnavailable,
   markSlotAsAvailable,
   findNextAvailableDate,
-  isDateFullyBooked
+  isDateFullyBooked,
+  isTimeSlotBooked,
+  getBookedTimesForDate
 };

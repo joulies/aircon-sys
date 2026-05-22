@@ -109,6 +109,7 @@ CREATE TABLE IF NOT EXISTS appointments (
   appointment_time VARCHAR(10) NOT NULL,
   assigned_employee_id INT DEFAULT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY unique_user_datetime (user_id, appointment_date, appointment_time),
   FOREIGN KEY (user_id) REFERENCES user_signup(id) ON DELETE CASCADE
 );
 

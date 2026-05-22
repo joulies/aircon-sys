@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getToken } from '../services/api';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import '../styles/checkout.css';
@@ -187,11 +186,11 @@ function CheckoutPage() {
         }
       });
 
-      const token = getToken();
-      if (!token) {
-        alert('Please log in to proceed with checkout');
-        return;
-      }
+const token = localStorage.getItem('authToken');
+if (!token) {
+  navigate('/login');
+  return;
+}
 
       const response = await fetch('http://localhost:5000/checkout', {
         method: 'POST',
