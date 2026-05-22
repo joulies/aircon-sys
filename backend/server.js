@@ -799,6 +799,28 @@ app.get("/appointments", authenticateToken, (req, res) => {
   });
 });
 
+// CHECK IF USER HAS AN EXISTING UPCOMING APPOINTMENT
+app.get("/appointments/check-existing", authenticateToken, (req, res) => {
+  const userId = req.userId;
+  // Use Philippine Time (UTC+8) for today's date
+  const phNow = new Date(Date.now() + (8 * 60 * 60 * 1000));
+  const today = phNow.toISOString().split('T')[0];
+  db.query(
+    "SELECT * FROM appointments WHERE user_id = ? AND appointment_date >= ? ORDER BY appointment_date ASC LIMIT 1",
+    [userId, today],
+    (err, results) => {
+      if (err) {
+        console.error("[APPOINTMENT] Error checking existing appointments:", err);
+        return res.status(500).json({ success: false, message: "Database error" });
+      }
+      if (results && results.length > 0) {
+        return res.json({ success: true, has_existing: true, appointment: results[0] });
+      }
+      res.json({ success: true, has_existing: false, appointment: null });
+    }
+  );
+});
+
 // ASSIGN EMPLOYEE TO APPOINTMENT (ADMIN)
 app.put("/appointments/:id/assign", async (req, res) => {
   const appointmentId = req.params.id;
@@ -921,17 +943,33 @@ app.get("/appointments/available-slots/:date", async (req, res) => {
   }
 
   try {
-    const slots = await appointmentAvailability.getAvailableSlotsForDate(db, date);
-    const isFullyBooked = await appointmentAvailability.isDateFullyBooked(db, date);
-    const bookedTimes = await appointmentAvailability.getBookedTimesForDate(db, date);
+    const availableTimes  = await appointmentAvailability.getAvailableTimeSlots(db);
+    const totalTechs      = await appointmentAvailability.getTotalTechnicians(db);
+    const isFullyBooked   = await appointmentAvailability.isDateFullyBooked(db, date);
+    const bookedTimes     = await appointmentAvailability.getBookedTimesForDate(db, date);
+
+    // Build per-slot capacity: { "08:00": { booked, total, remaining, is_available } }
+    const slotCapacity = {};
+    let totalAvailableSlots = 0;
+    for (const time of availableTimes) {
+      const cap = await appointmentAvailability.getSlotCapacity(db, date, time);
+      slotCapacity[time] = cap;
+      if (cap.remaining > 0) totalAvailableSlots++;
+    }
 
     res.json({
       success: true,
       date,
       is_fully_booked: isFullyBooked,
-      slots,
-      booked_times: bookedTimes,
-      available_times: await appointmentAvailability.getAvailableTimeSlots(db)
+      total_available_slots: totalAvailableSlots,
+      total_technicians: totalTechs,
+      slot_capacity: slotCapacity,   // { "08:00": { booked, total, remaining, is_available } }
+      booked_times: bookedTimes,     // times where remaining === 0
+      available_times: availableTimes,
+      // kept for backward compat with old frontend code that reads data.slots
+      slots: { pool: { name: "Technician Pool", slots: Object.fromEntries(
+        availableTimes.map(t => [t, { is_available: slotCapacity[t].remaining > 0, ...slotCapacity[t] }])
+      )}}
     });
   } catch (err) {
     console.error("Error getting available slots:", err);
@@ -1000,10 +1038,14 @@ app.get("/appointments/technician/:id/schedule", async (req, res) => {
 // CREATE order (from checkout)
 app.post("/checkout", authenticateToken, upload.single('receipt_file'), (req, res) => {
   const userId = req.userId;
-  const { room_size, capacity, property_type, house, province, city, barangay, zip, payment_method } = req.body;
+  const { room_size, capacity, property_type, house, province, city, barangay, zip, payment_method, appointment_date, appointment_time } = req.body;
 
   if (!payment_method) {
     return res.status(400).json({ success: false, message: "Missing payment method" });
+  }
+
+  if (!appointment_date || !appointment_time) {
+    return res.status(400).json({ success: false, message: "Missing appointment date or time. Please go back and select an appointment." });
   }
 
   // Get cart items and calculate total
@@ -1097,6 +1139,17 @@ app.post("/checkout", authenticateToken, upload.single('receipt_file'), (req, re
             // Clear cart
             db.query("DELETE FROM cart WHERE user_id = ?", [userId], (err) => {
               if (err) console.error("Error clearing cart:", err);
+
+              // Save the appointment now that the order is confirmed
+              const appointmentNumber = generateAppointmentNumber();
+              db.query(
+                "INSERT INTO appointments (user_id, appointment_number, order_id, appointment_date, appointment_time) VALUES (?, ?, ?, ?, ?)",
+                [userId, appointmentNumber, orderId, appointment_date, appointment_time],
+                (err) => {
+                  if (err) console.error("[CHECKOUT] Error saving appointment:", err);
+                  else console.log(`[CHECKOUT] Appointment ${appointmentNumber} saved for order ${orderId}`);
+                }
+              );
 
               // Add notification
               const message = payment_method === 'cod' ? 'Order placed successfully! Awaiting payment.' : 'Order placed! Awaiting payment confirmation.';
@@ -1872,7 +1925,8 @@ app.post("/admin/add-employee", (req, res) => {
               return res.status(500).json({ error: "Failed to add employee" });
             }
 
-            // Return the newly created employee
+            // Capacity is derived live from technician count — no slot initialisation needed.
+            // Adding this employee automatically increases remaining slots for all future dates.
             const newEmployee = {
               id: result.insertId,
               fname,

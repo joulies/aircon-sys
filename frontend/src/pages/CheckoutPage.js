@@ -81,6 +81,7 @@ const barangayData = {
 function CheckoutPage() {
   const navigate = useNavigate();
   const [cartItems, setCartItems] = useState([]);
+  const [pendingAppointment, setPendingAppointment] = useState(null);
   const [formData, setFormData] = useState({
     room_size: '',
     capacity: '',
@@ -95,6 +96,18 @@ function CheckoutPage() {
   });
 
   useEffect(() => {
+    // Read pending appointment — if missing, redirect back to appointment page
+    const raw = sessionStorage.getItem('pendingAppointment');
+    if (!raw) {
+      alert('Please select an appointment date and time first.');
+      navigate('/appointment');
+      return;
+    }
+    try {
+      setPendingAppointment(JSON.parse(raw));
+    } catch {
+      navigate('/appointment');
+    }
     loadCheckoutData();
   }, []);
 
@@ -176,6 +189,12 @@ function CheckoutPage() {
       return;
     }
 
+    if (!pendingAppointment) {
+      alert('Appointment selection missing. Please go back and select a date and time.');
+      navigate('/appointment');
+      return;
+    }
+
     try {
       const formDataObj = new FormData();
       Object.keys(formData).forEach(key => {
@@ -185,6 +204,10 @@ function CheckoutPage() {
           formDataObj.append(key, formData[key]);
         }
       });
+
+      // Include the appointment date+time — will be saved to DB in the checkout route
+      formDataObj.append('appointment_date', pendingAppointment.appointment_date);
+      formDataObj.append('appointment_time', pendingAppointment.appointment_time);
 
 const token = localStorage.getItem('authToken');
 if (!token) {
@@ -201,10 +224,13 @@ if (!token) {
       });
 
       if (response.ok) {
+        // Clear the pending appointment now that it's been saved
+        sessionStorage.removeItem('pendingAppointment');
         alert('Order placed successfully!');
         navigate('/purchase-history');
       } else {
-        alert('Failed to place order');
+        const data = await response.json();
+        alert(data.message || 'Failed to place order');
       }
     } catch (err) {
       console.error('Error submitting checkout:', err);
@@ -404,6 +430,20 @@ if (!token) {
           <div className="checkout-card order-summary">
             <h3>Order Summary</h3>
             <hr />
+
+            {/* Appointment summary */}
+            {pendingAppointment && (
+              <div style={{
+                background: '#e8f4f8', border: '1px solid #b8d9ea',
+                borderRadius: 6, padding: '10px 14px', marginBottom: 14,
+                fontSize: 13, color: '#1a5276'
+              }}>
+                <strong>📅 Appointment</strong>
+                <div style={{ marginTop: 4 }}>
+                  {pendingAppointment.display_date} at {pendingAppointment.display_time}
+                </div>
+              </div>
+            )}
 
             <div className="summary-items">
               {cartItems.map((item) => (

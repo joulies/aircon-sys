@@ -1,326 +1,214 @@
 const mysql = require("mysql2");
 
-// Get config value from technician_config table
+// ─── Config helpers ───────────────────────────────────────────────────────────
+
 async function getConfigValue(db, key, defaultValue) {
   return new Promise((resolve) => {
     db.query(
       "SELECT setting_value FROM technician_config WHERE setting_key = ?",
       [key],
       (err, results) => {
-        if (err || !results || results.length === 0) {
-          resolve(defaultValue);
-        } else {
-          resolve(results[0].setting_value);
-        }
+        if (err || !results || results.length === 0) resolve(defaultValue);
+        else resolve(results[0].setting_value);
       }
     );
   });
 }
 
-// Get available time slots
 async function getAvailableTimeSlots(db) {
-  const slotsStr = await getConfigValue(db, 'available_time_slots', '08:00,13:00');
-  return slotsStr.split(',').map(s => s.trim());
+  const slotsStr = await getConfigValue(db, "available_time_slots", "08:00,13:00");
+  return slotsStr.split(",").map((s) => s.trim());
 }
 
-// Get max appointments per day
+// Kept for backward compat but no longer drives capacity — technician count does
 async function getMaxAppointmentsPerDay(db) {
-  const max = await getConfigValue(db, 'max_appointments_per_day', '2');
+  const max = await getConfigValue(db, "max_appointments_per_day", "2");
   return parseInt(max);
 }
 
-// Check if a specific slot is available for a technician
-async function isSlotAvailable(db, technicianId, date, time) {
+// ─── Core capacity helpers ────────────────────────────────────────────────────
+
+// Total technicians in the system
+function getTotalTechnicians(db) {
   return new Promise((resolve) => {
-    if (!technicianId) {
-      // No specific technician, check if any slot is available
-      resolve(true);
-      return;
-    }
-
-    // First check if the time slot is already booked by any user
     db.query(
-      `SELECT COUNT(*) as count FROM appointments 
-       WHERE appointment_date = ? AND appointment_time = ?`,
-      [date, time],
-      (err, appointmentResults) => {
-        if (err || (appointmentResults && appointmentResults[0].count > 0)) {
-          // Time slot already booked, not available
-          resolve(false);
-          return;
-        }
-
-        // Check if the slot is marked as unavailable
-        db.query(
-          `SELECT is_available FROM appointment_slots 
-           WHERE technician_id = ? AND appointment_date = ? AND appointment_time = ?`,
-          [technicianId, date, time],
-          (err, results) => {
-            if (err || !results || results.length === 0) {
-              // Slot doesn't exist yet and time is not booked, so it should be available
-              resolve(true);
-            } else {
-              resolve(results[0].is_available === 1);
-            }
-          }
-        );
-      }
+      "SELECT COUNT(*) as cnt FROM user_signup WHERE role = 'employee'",
+      (err, rows) => resolve(err ? 0 : rows[0].cnt || 0)
     );
   });
 }
 
-// Count existing appointments for a technician on a date
-async function countAppointmentsOnDate(db, technicianId, date) {
+// Number of appointments already booked at a specific date+time (= technicians consumed)
+function getBookingsAtSlot(db, date, time) {
   return new Promise((resolve) => {
-    const query = `
-      SELECT COUNT(*) as count FROM appointments 
-      WHERE assigned_employee_id = ? AND appointment_date = ?
-    `;
-    db.query(query, [technicianId, date], (err, results) => {
-      if (err || !results) {
-        resolve(0);
-      } else {
-        resolve(results[0].count || 0);
-      }
-    });
+    db.query(
+      `SELECT COUNT(*) as cnt FROM appointments
+       WHERE appointment_date = ? AND appointment_time = ?`,
+      [date, time],
+      (err, rows) => resolve(err ? 0 : rows[0].cnt || 0)
+    );
   });
 }
 
-// Get available technicians for a specific date and time
+// Remaining capacity for a slot = total techs − bookings at that slot
+async function getSlotCapacity(db, date, time) {
+  const [total, booked] = await Promise.all([
+    getTotalTechnicians(db),
+    getBookingsAtSlot(db, date, time),
+  ]);
+  return { total, booked, remaining: Math.max(0, total - booked) };
+}
+
+// ─── Slot availability (used internally + by booking route) ──────────────────
+
+// A slot is available if remaining capacity > 0
+async function isSlotAvailableForDate(db, date, time) {
+  const { remaining } = await getSlotCapacity(db, date, time);
+  return remaining > 0;
+}
+
+// Legacy signature kept — technicianId ignored, slot-level capacity is what matters
+async function isSlotAvailable(db, technicianId, date, time) {
+  return isSlotAvailableForDate(db, date, time);
+}
+
+// ─── Date-level helpers ───────────────────────────────────────────────────────
+
+// A date is fully booked when ALL time slots have 0 remaining capacity
+async function isDateFullyBooked(db, date) {
+  const slots = await getAvailableTimeSlots(db);
+  for (const slot of slots) {
+    const available = await isSlotAvailableForDate(db, date, slot);
+    if (available) return false;
+  }
+  return true;
+}
+
+// Returns time slots that are fully booked (0 capacity left) — shown as ✗ in UI
+async function getBookedTimesForDate(db, date) {
+  const slots = await getAvailableTimeSlots(db);
+  const booked = [];
+  for (const slot of slots) {
+    const available = await isSlotAvailableForDate(db, date, slot);
+    if (!available) booked.push(slot);
+  }
+  return booked;
+}
+
+// ─── Slot info for the available-slots route ──────────────────────────────────
+
+// Returns per-slot availability info for a date
+// Shape: { "08:00": { is_available, booked, total, remaining }, ... }
+async function getAvailableSlotsForDate(db, date) {
+  const slots = await getAvailableTimeSlots(db);
+  const total = await getTotalTechnicians(db);
+  const result = {};
+
+  for (const slot of slots) {
+    const booked = await getBookingsAtSlot(db, date, slot);
+    const remaining = Math.max(0, total - booked);
+    result[slot] = {
+      is_available: remaining > 0,
+      booked,
+      total,
+      remaining,
+    };
+  }
+
+  // Wrap in a single "pool" key so the existing route shape still works
+  // (frontend reads data.slots and data.total_available_slots)
+  return { pool: { name: "Technician Pool", slots: result } };
+}
+
+// ─── Technician helpers (used by assign route) ────────────────────────────────
+
 async function getAvailableTechnicians(db, date, time) {
   return new Promise((resolve) => {
-    // Get all employees
     db.query(
       `SELECT id, fname, lname FROM user_signup WHERE role = 'employee' ORDER BY fname ASC`,
       async (err, employees) => {
-        if (err || !employees) {
-          resolve([]);
-          return;
-        }
+        if (err || !employees) { resolve([]); return; }
 
-        const maxAppointments = await getMaxAppointmentsPerDay(db);
-        const availableTechs = [];
-
+        // A technician is available if they haven't been assigned an appointment at this slot
+        const available = [];
         for (const tech of employees) {
-          const slotAvailable = await isSlotAvailable(db, tech.id, date, time);
-          const appointmentCount = await countAppointmentsOnDate(db, tech.id, date);
-
-          if (slotAvailable && appointmentCount < maxAppointments) {
-            availableTechs.push({
-              id: tech.id,
-              name: `${tech.fname} ${tech.lname}`,
-              fname: tech.fname,
-              lname: tech.lname,
-              appointments_today: appointmentCount,
-              slots_remaining: maxAppointments - appointmentCount
-            });
+          const alreadyAssigned = await new Promise((res) => {
+            db.query(
+              `SELECT COUNT(*) as cnt FROM appointments
+               WHERE assigned_employee_id = ? AND appointment_date = ? AND appointment_time = ?`,
+              [tech.id, date, time],
+              (err, rows) => res(err ? 1 : rows[0].cnt || 0)
+            );
+          });
+          if (!alreadyAssigned) {
+            available.push({ id: tech.id, name: `${tech.fname} ${tech.lname}`, fname: tech.fname, lname: tech.lname });
           }
         }
-
-        resolve(availableTechs);
+        resolve(available);
       }
     );
   });
 }
 
-// Get available slots for all technicians on a date
-async function getAvailableSlotsForDate(db, date) {
+// Count appointments assigned to a technician on a date (for admin schedule view)
+function countAppointmentsOnDate(db, technicianId, date) {
   return new Promise((resolve) => {
     db.query(
-      `SELECT id, fname, lname FROM user_signup WHERE role = 'employee' ORDER BY fname ASC`,
-      async (err, employees) => {
-        if (err || !employees) {
-          resolve({});
-          return;
-        }
-
-        const slots = await getAvailableTimeSlots(db);
-        const maxAppointments = await getMaxAppointmentsPerDay(db);
-        const result = {};
-
-        for (const tech of employees) {
-          result[tech.id] = {
-            name: `${tech.fname} ${tech.lname}`,
-            slots: {}
-          };
-
-          for (const slot of slots) {
-            const slotAvailable = await isSlotAvailable(db, tech.id, date, slot);
-            const appointmentCount = await countAppointmentsOnDate(db, tech.id, date);
-            const isFull = appointmentCount >= maxAppointments;
-
-            result[tech.id].slots[slot] = {
-              is_available: slotAvailable && !isFull,
-              booked: appointmentCount,
-              max: maxAppointments,
-              slots_remaining: Math.max(0, maxAppointments - appointmentCount)
-            };
-          }
-        }
-
-        resolve(result);
-      }
+      `SELECT COUNT(*) as count FROM appointments
+       WHERE assigned_employee_id = ? AND appointment_date = ?`,
+      [technicianId, date],
+      (err, results) => resolve(err || !results ? 0 : results[0].count || 0)
     );
   });
 }
 
-// Mark a slot as unavailable
+// ─── Mark slot helpers (kept for backward compat, no-ops under new model) ─────
+// Under the new model capacity is derived from the appointments table directly,
+// so these are no longer needed for availability — but kept so existing call
+// sites in server.js don't break.
+
 async function markSlotAsUnavailable(db, technicianId, date, time) {
-  return new Promise((resolve, reject) => {
-    // Try to insert first, if exists it will fail and we update
-    db.query(
-      `INSERT INTO appointment_slots (technician_id, appointment_date, appointment_time, is_available) 
-       VALUES (?, ?, ?, 0)
-       ON DUPLICATE KEY UPDATE is_available = 0`,
-      [technicianId, date, time],
-      (err, result) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(result);
-        }
-      }
-    );
-  });
+  // no-op — capacity is now computed from appointment count vs technician count
+  return Promise.resolve();
 }
 
-// Mark a slot as available
 async function markSlotAsAvailable(db, technicianId, date, time) {
-  return new Promise((resolve, reject) => {
-    db.query(
-      `INSERT INTO appointment_slots (technician_id, appointment_date, appointment_time, is_available) 
-       VALUES (?, ?, ?, 1)
-       ON DUPLICATE KEY UPDATE is_available = 1`,
-      [technicianId, date, time],
-      (err, result) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(result);
-        }
-      }
-    );
-  });
+  // no-op
+  return Promise.resolve();
 }
 
-// Find next available date for a technician
+// ─── Next available date ──────────────────────────────────────────────────────
+
 async function findNextAvailableDate(db, technicianId, startDate, slots) {
-  return new Promise((resolve) => {
-    let currentDate = new Date(startDate);
-    let found = false;
-    let maxIterations = 90; // Search up to 90 days ahead
-    let iteration = 0;
-
-    const checkNextDate = async () => {
-      if (found || iteration >= maxIterations) {
-        resolve(found ? currentDate : null);
-        return;
-      }
-
-      iteration++;
-      const dateStr = currentDate.toISOString().split('T')[0];
-
-      // Check if any slot is available
-      let hasAvailableSlot = false;
-      for (const slot of slots) {
-        const available = await isSlotAvailable(db, technicianId, dateStr, slot);
-        const count = await countAppointmentsOnDate(db, technicianId, dateStr);
-        const maxAppointments = await getMaxAppointmentsPerDay(db);
-
-        if (available && count < maxAppointments) {
-          hasAvailableSlot = true;
-          break;
-        }
-      }
-
-      if (hasAvailableSlot) {
-        found = true;
-        resolve(currentDate);
-      } else {
-        currentDate.setDate(currentDate.getDate() + 1);
-        checkNextDate();
-      }
-    };
-
-    checkNextDate();
-  });
+  let currentDate = new Date(startDate);
+  for (let i = 0; i < 90; i++) {
+    currentDate.setDate(currentDate.getDate() + 1);
+    const dateStr = currentDate.toISOString().split("T")[0];
+    const fullyBooked = await isDateFullyBooked(db, dateStr);
+    if (!fullyBooked) return currentDate;
+  }
+  return null;
 }
 
-// Check if a date is fully booked for all technicians
-async function isDateFullyBooked(db, date) {
-  return new Promise((resolve) => {
-    db.query(
-      `SELECT id FROM user_signup WHERE role = 'employee'`,
-      async (err, employees) => {
-        if (err || !employees || employees.length === 0) {
-          resolve(false);
-          return;
-        }
-
-        const slots = await getAvailableTimeSlots(db);
-        const maxAppointments = await getMaxAppointmentsPerDay(db);
-
-        for (const tech of employees) {
-          for (const slot of slots) {
-            const slotAvailable = await isSlotAvailable(db, tech.id, date, slot);
-            const count = await countAppointmentsOnDate(db, tech.id, date);
-
-            if (slotAvailable && count < maxAppointments) {
-              // Found an available slot
-              resolve(false);
-              return;
-            }
-          }
-        }
-
-        // No available slots found
-        resolve(true);
-      }
-    );
-  });
-}
-
-// Get all booked times for a specific date
-async function getBookedTimesForDate(db, date) {
-  return new Promise((resolve) => {
-    db.query(
-      `SELECT DISTINCT appointment_time FROM appointments 
-       WHERE appointment_date = ?`,
-      [date],
-      (err, results) => {
-        if (err || !results) {
-          resolve([]);
-        } else {
-          resolve(results.map(r => r.appointment_time));
-        }
-      }
-    );
-  });
-}
-
-// Check if a specific date/time has ANY appointment (first user booked it)
+// ─── isTimeSlotBooked (used by booking route to block double-user booking) ────
+// A user cannot book a slot that already has a booking — each user gets their
+// own technician. This just checks if the slot has any capacity left.
 async function isTimeSlotBooked(db, date, time) {
-  return new Promise((resolve) => {
-    db.query(
-      `SELECT COUNT(*) as count FROM appointments 
-       WHERE appointment_date = ? AND appointment_time = ?`,
-      [date, time],
-      (err, results) => {
-        if (err || !results) {
-          resolve(false);
-        } else {
-          resolve(results[0].count > 0);
-        }
-      }
-    );
-  });
+  const available = await isSlotAvailableForDate(db, date, time);
+  return !available;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 module.exports = {
   getConfigValue,
   getAvailableTimeSlots,
   getMaxAppointmentsPerDay,
+  getTotalTechnicians,
+  getBookingsAtSlot,
+  getSlotCapacity,
   isSlotAvailable,
+  isSlotAvailableForDate,
   countAppointmentsOnDate,
   getAvailableTechnicians,
   getAvailableSlotsForDate,
@@ -329,5 +217,5 @@ module.exports = {
   findNextAvailableDate,
   isDateFullyBooked,
   isTimeSlotBooked,
-  getBookedTimesForDate
+  getBookedTimesForDate,
 };
