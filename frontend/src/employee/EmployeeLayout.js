@@ -1,12 +1,13 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import logo from '../logo.png';
 import '../styles/employee.css';
 
 const EmployeeLayout = ({ children }) => {
     const location = useLocation();
     const navigate = useNavigate();
-    const { logout, user } = useAuth();
+    const { logout } = useAuth();
 
     const handleLogout = () => {
         if (window.confirm('Are you sure you want to logout?')) {
@@ -22,9 +23,7 @@ const EmployeeLayout = ({ children }) => {
     return (
         <div className="layout">
             <nav className="left-nav">
-                <svg className="nav-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M50 10 L70 40 L85 35 L65 70 L85 65 L70 90 L50 65 L30 90 L15 65 L35 70 L20 35 L35 40 Z" fill="white" stroke="white" strokeWidth="2"/>
-                </svg>
+                <img src={logo} alt="VA Industrial Electrical Services Logo" className="nav-logo" />
                 <p className="company">VA Industrial — Employee</p>
 
                 <ul>

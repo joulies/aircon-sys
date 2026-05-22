@@ -23,8 +23,6 @@ import AdminUsers from './admin/AdminUsers';
 import AdminEmployees from './admin/AdminEmployees';
 import AdminAppointments from './admin/AdminAppointments';
 import AdminRefundRequests from './admin/AdminRefundRequests';
-import AdminOrderAnalytics from './admin/AdminOrderAnalytics';
-import AdminAssignEmployees from './admin/AdminAssignEmployees';
 import AdminSettings from './admin/AdminSettings';
 import AdminReports from './admin/AdminReports';
 import EmployeeLayout from './employee/EmployeeLayout';
@@ -57,8 +55,6 @@ function App() {
           <Route path="/admin/orders" element={<AdminRoute><AdminOrders /></AdminRoute>} />
           <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
           <Route path="/admin/appointments" element={<AdminRoute><AdminAppointments /></AdminRoute>} />
-          <Route path="/admin/order-analytics" element={<AdminRoute><AdminOrderAnalytics /></AdminRoute>} />
-          <Route path="/admin/assign-employees" element={<AdminRoute><AdminAssignEmployees /></AdminRoute>} />
           <Route path="/admin/employees" element={<AdminRoute><AdminEmployees /></AdminRoute>} />
           <Route path="/admin/refund-requests" element={<AdminRoute><AdminRefundRequests /></AdminRoute>} />
           <Route path="/admin/settings" element={<AdminRoute><AdminSettings /></AdminRoute>} />

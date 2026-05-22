@@ -12,6 +12,7 @@ const AdminOrders = () => {
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [showReceiptModal, setShowReceiptModal] = useState(false);
     const [showAssignModal, setShowAssignModal] = useState(false);
+    const [showDetailsModal, setShowDetailsModal] = useState(false);
     const [selectedEmployee, setSelectedEmployee] = useState('');
     const [rejectionReason, setRejectionReason] = useState('');
 
@@ -285,6 +286,157 @@ const AdminOrders = () => {
         );
     };
 
+    const renderDetailsModal = () => {
+        if (!showDetailsModal || !selectedOrder) return null;
+
+        console.log('Order Data:', selectedOrder);
+
+        return (
+            <div style={{
+                position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex',
+                alignItems: 'center', justifyContent: 'center', zIndex: 1000
+            }}>
+                <div style={{
+                    backgroundColor: 'white', borderRadius: '8px', padding: '30px',
+                    maxWidth: '900px', width: '95%', maxHeight: '90vh', overflowY: 'auto'
+                }}>
+                    <h2>Order Details - {selectedOrder.order_number}</h2>
+                    <hr style={{ margin: '15px 0' }} />
+
+                    <div style={{ marginBottom: '20px' }}>
+                        <h3 style={{ color: '#333', marginBottom: '15px' }}>Customer Information</h3>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                            <div>
+                                <p style={{ margin: '0 0 5px 0', color: '#666', fontSize: '12px', fontWeight: '600' }}>First Name</p>
+                                <p style={{ margin: 0, color: '#333', fontSize: '14px' }}>{selectedOrder.fname || 'N/A'}</p>
+                            </div>
+                            <div>
+                                <p style={{ margin: '0 0 5px 0', color: '#666', fontSize: '12px', fontWeight: '600' }}>Last Name</p>
+                                <p style={{ margin: 0, color: '#333', fontSize: '14px' }}>{selectedOrder.lname || 'N/A'}</p>
+                            </div>
+                            <div>
+                                <p style={{ margin: '0 0 5px 0', color: '#666', fontSize: '12px', fontWeight: '600' }}>Email</p>
+                                <p style={{ margin: 0, color: '#333', fontSize: '14px' }}>{selectedOrder.email || 'N/A'}</p>
+                            </div>
+                            <div>
+                                <p style={{ margin: '0 0 5px 0', color: '#666', fontSize: '12px', fontWeight: '600' }}>Contact Number</p>
+                                <p style={{ margin: 0, color: '#333', fontSize: '14px' }}>{selectedOrder.contact || 'N/A'}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style={{ marginBottom: '20px' }}>
+                        <h3 style={{ color: '#333', marginBottom: '15px' }}>Installation Specifications</h3>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                            <div>
+                                <p style={{ margin: '0 0 5px 0', color: '#666', fontSize: '12px', fontWeight: '600' }}>Room Size (sqm)</p>
+                                <p style={{ margin: 0, color: '#333', fontSize: '14px' }}>{selectedOrder.room_size ? `${selectedOrder.room_size} sqm` : 'N/A'}</p>
+                            </div>
+                            <div>
+                                <p style={{ margin: '0 0 5px 0', color: '#666', fontSize: '12px', fontWeight: '600' }}>Capacity (Rooms/Offices)</p>
+                                <p style={{ margin: 0, color: '#333', fontSize: '14px' }}>{selectedOrder.capacity || 'N/A'}</p>
+                            </div>
+                            <div>
+                                <p style={{ margin: '0 0 5px 0', color: '#666', fontSize: '12px', fontWeight: '600' }}>Property Type</p>
+                                <p style={{ margin: 0, color: '#333', fontSize: '14px', textTransform: 'capitalize' }}>{selectedOrder.property_type ? selectedOrder.property_type : 'N/A'}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style={{ marginBottom: '20px' }}>
+                        <h3 style={{ color: '#333', marginBottom: '15px' }}>Delivery Address</h3>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                            <div style={{ gridColumn: '1 / -1' }}>
+                                <p style={{ margin: '0 0 5px 0', color: '#666', fontSize: '12px', fontWeight: '600' }}>House No./Street Name</p>
+                                <p style={{ margin: 0, color: '#333', fontSize: '14px' }}>{selectedOrder.house || 'N/A'}</p>
+                            </div>
+                            <div>
+                                <p style={{ margin: '0 0 5px 0', color: '#666', fontSize: '12px', fontWeight: '600' }}>Province</p>
+                                <p style={{ margin: 0, color: '#333', fontSize: '14px' }}>{selectedOrder.province || 'N/A'}</p>
+                            </div>
+                            <div>
+                                <p style={{ margin: '0 0 5px 0', color: '#666', fontSize: '12px', fontWeight: '600' }}>City</p>
+                                <p style={{ margin: 0, color: '#333', fontSize: '14px' }}>
+                                    {selectedOrder.city ? (selectedOrder.city === 'dasma' ? 'Dasmariñas' : selectedOrder.city === 'imus' ? 'Imus' : 'Bacoor') : 'N/A'}
+                                </p>
+                            </div>
+                            <div>
+                                <p style={{ margin: '0 0 5px 0', color: '#666', fontSize: '12px', fontWeight: '600' }}>Barangay</p>
+                                <p style={{ margin: 0, color: '#333', fontSize: '14px' }}>{selectedOrder.barangay || 'N/A'}</p>
+                            </div>
+                            <div>
+                                <p style={{ margin: '0 0 5px 0', color: '#666', fontSize: '12px', fontWeight: '600' }}>Zip Code</p>
+                                <p style={{ margin: 0, color: '#333', fontSize: '14px' }}>{selectedOrder.zip || 'N/A'}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style={{ marginBottom: '20px' }}>
+                        <h3 style={{ color: '#333', marginBottom: '15px' }}>Payment Information</h3>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                            <div>
+                                <p style={{ margin: '0 0 5px 0', color: '#666', fontSize: '12px', fontWeight: '600' }}>Payment Method</p>
+                                <p style={{ margin: 0, color: '#333', fontSize: '14px', fontWeight: '600', textTransform: 'uppercase' }}>{selectedOrder.payment_method || 'N/A'}</p>
+                            </div>
+                            <div>
+                                <p style={{ margin: '0 0 5px 0', color: '#666', fontSize: '12px', fontWeight: '600' }}>Total Amount</p>
+                                <p style={{ margin: 0, color: '#333', fontSize: '14px', fontWeight: '600' }}>₱{selectedOrder.total_amount ? parseFloat(selectedOrder.total_amount).toFixed(2) : '0.00'}</p>
+                            </div>
+                            <div>
+                                <p style={{ margin: '0 0 5px 0', color: '#666', fontSize: '12px', fontWeight: '600' }}>Downpayment Amount</p>
+                                <p style={{ margin: 0, color: '#333', fontSize: '14px', fontWeight: '600' }}>₱{selectedOrder.downpayment_amount ? parseFloat(selectedOrder.downpayment_amount).toFixed(2) : '0.00'}</p>
+                            </div>
+                            <div>
+                                <p style={{ margin: '0 0 5px 0', color: '#666', fontSize: '12px', fontWeight: '600' }}>Payment Status</p>
+                                <p style={{ margin: 0, color: '#333', fontSize: '14px' }}>{selectedOrder.payment_status || 'N/A'}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style={{ marginBottom: '20px' }}>
+                        <h3 style={{ color: '#333', marginBottom: '15px' }}>Order Status</h3>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                            <div>
+                                <p style={{ margin: '0 0 5px 0', color: '#666', fontSize: '12px', fontWeight: '600' }}>Order Status</p>
+                                <p style={{ margin: 0, color: '#333', fontSize: '14px', textTransform: 'capitalize' }}>{selectedOrder.status || 'N/A'}</p>
+                            </div>
+                            <div>
+                                <p style={{ margin: '0 0 5px 0', color: '#666', fontSize: '12px', fontWeight: '600' }}>Order Date</p>
+                                <p style={{ margin: 0, color: '#333', fontSize: '14px' }}>{selectedOrder.created_at ? new Date(selectedOrder.created_at).toLocaleDateString() : 'N/A'}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {selectedOrder.proof_file && (
+                        <div style={{ marginBottom: '20px' }}>
+                            <h3 style={{ color: '#333', marginBottom: '15px' }}>Payment Proof</h3>
+                            <div style={{ border: '1px solid #ddd', borderRadius: '4px', padding: '10px' }}>
+                                <img
+                                    src={`http://localhost:5000${selectedOrder.proof_file}`}
+                                    alt="Payment Proof"
+                                    style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '4px', objectFit: 'contain' }}
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '20px' }}>
+                        <button
+                            onClick={() => setShowDetailsModal(false)}
+                            style={{
+                                padding: '10px 20px', backgroundColor: '#ccc',
+                                color: '#333', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '500'
+                            }}
+                        >
+                            Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     if (loading) {
         return (
             <AdminLayout>
@@ -435,6 +587,7 @@ const AdminOrders = () => {
                         <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Payment Status</th>
                         <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Order Status</th>
                         <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Date</th>
+                        <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -455,6 +608,21 @@ const AdminOrders = () => {
                             </td>
                             <td style={{ padding: '12px', color: '#666' }}>
                                 {new Date(order.created_at).toLocaleDateString()}
+                            </td>
+                            <td style={{ padding: '12px' }}>
+                                <button
+                                    onClick={() => {
+                                        setSelectedOrder(order);
+                                        setShowDetailsModal(true);
+                                    }}
+                                    style={{
+                                        padding: '5px 10px', backgroundColor: '#0066cc',
+                                        color: 'white', border: 'none', borderRadius: '4px',
+                                        cursor: 'pointer', fontSize: '12px'
+                                    }}
+                                >
+                                    View Details
+                                </button>
                             </td>
                         </tr>
                     ))}
@@ -508,6 +676,7 @@ const AdminOrders = () => {
 
             {renderReceiptModal()}
             {renderAssignModal()}
+            {renderDetailsModal()}
         </AdminLayout>
     );
 };

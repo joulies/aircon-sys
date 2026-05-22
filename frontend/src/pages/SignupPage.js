@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { signup as apiSignup } from '../services/api';
 import Dialog from '../components/Dialog';
+import logo from '../logo.png';
 import '../styles/auth.css';
 
 function SignupPage() {
@@ -28,7 +29,7 @@ function SignupPage() {
     const hasUpperCase = /[A-Z]/.test(password);
     const hasLowerCase = /[a-z]/.test(password);
     const hasNumbers = /\d/.test(password);
-    const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+    const hasSpecialChar = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password);
     const length = password.length;
 
     if (length >= 8) strengthLevel++;
@@ -75,7 +76,7 @@ function SignupPage() {
       if (!/[A-Z]/.test(formData.password)) errors.push('Password must contain at least one uppercase letter');
       if (!/[a-z]/.test(formData.password)) errors.push('Password must contain at least one lowercase letter');
       if (!/\d/.test(formData.password)) errors.push('Password must contain at least one number');
-      if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(formData.password)) errors.push('Password must contain at least one special character (!@#$%^&* etc)');
+      if (!/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(formData.password)) errors.push('Password must contain at least one special character (!@#$%^&* etc)');
     }
     if (formData.password && formData.confirmPassword && formData.password !== formData.confirmPassword) errors.push('Passwords do not match');
     return errors;
@@ -112,6 +113,9 @@ function SignupPage() {
 
   return (
     <div className="auth-container">
+      <Link to="/" className="logo-link">
+        <img src={logo} alt="VA Industrial Electrical Services Logo" className="auth-logo" />
+      </Link>
       <div className="auth-card">
         <h1 className="auth-title">Create Account</h1>
         

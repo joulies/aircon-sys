@@ -11,25 +11,114 @@ function AppointmentPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [cartItems, setCartItems] = useState([]);
   const [cartError, setCartError] = useState(null);
+  const [dateAvailability, setDateAvailability] = useState({}); // Track availability for each date
+  const [loadingAvailability, setLoadingAvailability] = useState(false);
+  const [availabilityError, setAvailabilityError] = useState(null);
+  const [availableTechs, setAvailableTechs] = useState([]);
   const showCalendar = true;
 
   const timeSlots = ['8:00 AM', '1:00 PM'];
+  const timeSlotMap = {
+    '8:00 AM': '08:00',
+    '1:00 PM': '13:00'
+  };
 
   useEffect(() => {
     validateCart();
   }, []);
 
+  // Fetch availability for current month when it changes
   useEffect(() => {
-    // If cart has errors, automatically redirect back to cart immediately
-    if (cartError) {
-      console.warn('[AppointmentPage] Cart validation error detected, will redirect to cart in 1 second');
-      const timer = setTimeout(() => {
-        console.log('[AppointmentPage] Redirecting to cart due to validation errors');
-        navigate('/cart');
-      }, 1000);
-      return () => clearTimeout(timer);
+    fetchMonthAvailability(currentMonth);
+  }, [currentMonth]);
+
+  // Fetch availability for selected date
+  useEffect(() => {
+    if (selectedDate) {
+      fetchDateAvailability(selectedDate);
     }
-  }, [cartError, navigate]);
+  }, [selectedDate]);
+
+  const fetchMonthAvailability = async (month) => {
+    setLoadingAvailability(true);
+    try {
+      const firstDay = new Date(month.getFullYear(), month.getMonth(), 1);
+      const lastDay = new Date(month.getFullYear(), month.getMonth() + 1, 0);
+      
+      const availability = {};
+      
+      // Fetch availability for first and a few sample days to determine month status
+      const daysToCheck = [];
+      for (let d = 1; d <= Math.min(7, new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate()); d++) {
+        const dateStr = new Date(month.getFullYear(), month.getMonth(), d).toISOString().split('T')[0];
+        daysToCheck.push(dateStr);
+      }
+      
+      for (const dateStr of daysToCheck) {
+        try {
+          const response = await fetch(`http://localhost:5000/appointments/available-slots/${dateStr}`);
+          if (response.ok) {
+            const data = await response.json();
+            availability[dateStr] = {
+              is_fully_booked: data.is_fully_booked,
+              has_slots: data.total_available_slots > 0
+            };
+          }
+        } catch (err) {
+          console.error('[AppointmentPage] Error fetching availability for', dateStr, err);
+        }
+      }
+      
+      setDateAvailability(availability);
+    } catch (err) {
+      console.error('[AppointmentPage] Error fetching month availability:', err);
+    } finally {
+      setLoadingAvailability(false);
+    }
+  };
+
+  const fetchDateAvailability = async (date) => {
+    try {
+      const dateStr = date.toISOString().split('T')[0];
+      const response = await fetch(`http://localhost:5000/appointments/available-slots/${dateStr}`);
+      
+      if (!response.ok) {
+        setAvailabilityError('Failed to fetch availability');
+        return;
+      }
+      
+      const data = await response.json();
+      
+      if (data.is_fully_booked) {
+        setAvailabilityError(`This date is fully booked for all technicians.`);
+        setAvailableTechs([]);
+      } else {
+        setAvailabilityError(null);
+        // Extract available technicians from slots
+        const techs = Object.entries(data.slots).map(([techId, techData]) => ({
+          id: techId,
+          name: techData.name
+        }));
+        setAvailableTechs(techs);
+      }
+    } catch (err) {
+      console.error('[AppointmentPage] Error fetching date availability:', err);
+      setAvailabilityError('Error checking availability');
+    }
+  };
+
+  useEffect(() => {
+    // Monitor cartItems for invalid entries - redirect immediately if found
+    if (cartItems && cartItems.length > 0) {
+      const invalidItems = cartItems.filter(item => item.quantity > item.num_stocks);
+      if (invalidItems.length > 0) {
+        console.warn('[AppointmentPage] Invalid items detected in cart items, will redirect to cart');
+        navigate('/cart');
+      } else {
+        console.log('[AppointmentPage] All cart items valid');
+      }
+    }
+  }, [cartItems, navigate]);
 
   const validateCart = async () => {
     try {
@@ -91,6 +180,7 @@ function AppointmentPage() {
       }
     }
   }, [cartItems, navigate]);
+
   const getDaysInMonth = (date) => {
     return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
   };
@@ -212,6 +302,19 @@ function AppointmentPage() {
     }
   };
 
+  const getDateAvailabilityClass = (day) => {
+    if (day === null || isDateDisabled(day)) return '';
+    
+    const dateStr = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day)
+      .toISOString().split('T')[0];
+    const availability = dateAvailability[dateStr];
+    
+    if (!availability) return 'availability-unknown';
+    if (availability.is_fully_booked) return 'fully-booked';
+    if (availability.has_slots) return 'available';
+    return 'availability-unknown';
+  };
+
   const daysInMonth = getDaysInMonth(currentMonth);
   const firstDay = getFirstDayOfMonth(currentMonth);
   const days = [];
@@ -302,9 +405,18 @@ function AppointmentPage() {
                         currentMonth.getMonth() === selectedDate.getMonth()
                           ? 'selected'
                           : ''
-                      }`}
+                      } ${getDateAvailabilityClass(day)}`}
                       onClick={() => day && handleDateClick(day)}
                       disabled={isDateDisabled(day)}
+                      title={
+                        day && dateAvailability[new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day).toISOString().split('T')[0]]?.is_fully_booked
+                          ? 'This date is fully booked'
+                          : day && dateAvailability[new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day).toISOString().split('T')[0]]?.has_slots
+                          ? 'Slots available'
+                          : day
+                          ? 'Checking availability...'
+                          : ''
+                      }
                     >
                       {day}
                     </button>
@@ -315,12 +427,43 @@ function AppointmentPage() {
 
             <div className="time-section">
               <h3>Select Time</h3>
+              {availabilityError && (
+                <div style={{
+                  backgroundColor: '#f8d7da',
+                  border: '1px solid #f5c6cb',
+                  borderRadius: '4px',
+                  padding: '12px',
+                  marginBottom: '15px',
+                  color: '#721c24',
+                  fontSize: '14px'
+                }}>
+                  <strong><i className="fa fa-exclamation-circle"></i></strong> {availabilityError}
+                </div>
+              )}
+              {selectedDate && !availabilityError && availableTechs.length > 0 && (
+                <div style={{
+                  backgroundColor: '#d4edda',
+                  border: '1px solid #c3e6cb',
+                  borderRadius: '4px',
+                  padding: '12px',
+                  marginBottom: '15px',
+                  color: '#155724',
+                  fontSize: '14px'
+                }}>
+                  <strong><i className="fa fa-check-circle"></i></strong> {availableTechs.length} technician{availableTechs.length !== 1 ? 's' : ''} available
+                </div>
+              )}
               <div className="time-slots">
                 {timeSlots.map((slot) => (
                   <button
                     key={slot}
                     className={`time-slot ${selectedTime === slot ? 'selected' : ''}`}
                     onClick={() => setSelectedTime(slot)}
+                    disabled={availabilityError ? true : false}
+                    style={{
+                      opacity: availabilityError ? 0.5 : 1,
+                      cursor: availabilityError ? 'not-allowed' : 'pointer'
+                    }}
                   >
                     {slot}
                   </button>

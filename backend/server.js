@@ -9,6 +9,7 @@ const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
 const { generateOrderNumber } = require("./utils/orderNumber");
 const { generateAppointmentNumber } = require("./utils/appointmentNumber");
+const appointmentAvailability = require("./utils/appointmentAvailability");
 require("dotenv").config();
 
 const app = express();
@@ -622,7 +623,7 @@ app.delete("/cart/:id", (req, res) => {
 // ==========================================
 
 // CREATE appointment
-app.post("/appointments", authenticateToken, (req, res) => {
+app.post("/appointments", authenticateToken, async (req, res) => {
   const { appointment_date, appointment_time } = req.body;
   const userId = req.userId;
 
@@ -632,50 +633,98 @@ app.post("/appointments", authenticateToken, (req, res) => {
     return res.status(400).json({ success: false, message: "Missing appointment_date or appointment_time" });
   }
 
-  // Validate cart before creating appointment
-  db.query(
-    `SELECT c.id, c.product_id, c.quantity, p.num_stocks
-     FROM cart c 
-     JOIN products p ON c.product_id = p.id 
-     WHERE c.user_id = ?`,
-    [userId],
-    (err, cartItems) => {
-      if (err) {
-        console.error('[APPOINTMENT] Error checking cart:', err);
-        return res.status(500).json({ success: false, message: "Database error" });
-      }
-
-      // Check if any items exceed stock
-      const invalidItems = cartItems.filter(item => item.quantity > item.num_stocks);
-      if (invalidItems.length > 0) {
-        const errorMsg = `Cannot create appointment. Cart contains items that exceed available stock: ${invalidItems
-          .map(item => `Product ${item.product_id}: ${item.quantity} requested but only ${item.num_stocks} available`)
-          .join('; ')}`;
-        console.warn('[APPOINTMENT] Appointment blocked - cart exceeds stock:', invalidItems);
-        return res.status(400).json({ success: false, message: errorMsg });
-      }
-
-      if (cartItems.length === 0) {
-        console.warn('[APPOINTMENT] Appointment blocked - cart is empty');
-        return res.status(400).json({ success: false, message: "Cannot create appointment. Your cart is empty." });
-      }
-
-      console.log(`[APPOINTMENT] Cart validation passed. Creating appointment...`);
-      const appointmentNumber = generateAppointmentNumber();
-      db.query(
-        "INSERT INTO appointments (user_id, appointment_number, appointment_date, appointment_time) VALUES (?, ?, ?, ?)",
-        [userId, appointmentNumber, appointment_date, appointment_time],
-        (err, result) => {
-          if (err) {
-            console.error('[APPOINTMENT] Error creating appointment:', err);
-            return res.status(500).json({ success: false, message: "Failed to create appointment" });
-          }
-          console.log(`[APPOINTMENT] Appointment created successfully with ID ${result.insertId}`);
-          res.json({ success: true, id: result.insertId, appointment_date, appointment_time });
-        }
-      );
+  try {
+    // Check availability before proceeding
+    const isDateFullyBooked = await appointmentAvailability.isDateFullyBooked(db, appointment_date);
+    const slots = await appointmentAvailability.getAvailableTimeSlots(db);
+    
+    if (isDateFullyBooked) {
+      // Find next available date
+      const nextDate = await appointmentAvailability.findNextAvailableDate(db, null, new Date(appointment_date), slots);
+      const nextDateStr = nextDate ? nextDate.toISOString().split('T')[0] : null;
+      
+      return res.status(400).json({ 
+        success: false, 
+        message: `The date ${appointment_date} is fully booked for all technicians.`,
+        full_date: appointment_date,
+        next_available_date: nextDateStr,
+        suggestion: nextDateStr ? `Next available date is ${nextDateStr}` : 'No available dates in the next 90 days'
+      });
     }
-  );
+
+    // Get available technicians for this slot
+    const availableTechs = await appointmentAvailability.getAvailableTechnicians(db, appointment_date, appointment_time);
+    
+    if (availableTechs.length === 0) {
+      // Find next available date for any technician
+      const nextDate = await appointmentAvailability.findNextAvailableDate(db, null, new Date(appointment_date), slots);
+      const nextDateStr = nextDate ? nextDate.toISOString().split('T')[0] : null;
+      
+      return res.status(400).json({ 
+        success: false, 
+        message: `No technicians available for ${appointment_date} at ${appointment_time}`,
+        requested_date: appointment_date,
+        requested_time: appointment_time,
+        next_available_date: nextDateStr,
+        available_slots: slots
+      });
+    }
+
+    // Validate cart before creating appointment
+    db.query(
+      `SELECT c.id, c.product_id, c.quantity, p.num_stocks
+       FROM cart c 
+       JOIN products p ON c.product_id = p.id 
+       WHERE c.user_id = ?`,
+      [userId],
+      async (err, cartItems) => {
+        if (err) {
+          console.error('[APPOINTMENT] Error checking cart:', err);
+          return res.status(500).json({ success: false, message: "Database error" });
+        }
+
+        // Check if any items exceed stock
+        const invalidItems = cartItems.filter(item => item.quantity > item.num_stocks);
+        if (invalidItems.length > 0) {
+          const errorMsg = `Cannot create appointment. Cart contains items that exceed available stock: ${invalidItems
+            .map(item => `Product ${item.product_id}: ${item.quantity} requested but only ${item.num_stocks} available`)
+            .join('; ')}`;
+          console.warn('[APPOINTMENT] Appointment blocked - cart exceeds stock:', invalidItems);
+          return res.status(400).json({ success: false, message: errorMsg });
+        }
+
+        if (cartItems.length === 0) {
+          console.warn('[APPOINTMENT] Appointment blocked - cart is empty');
+          return res.status(400).json({ success: false, message: "Cannot create appointment. Your cart is empty." });
+        }
+
+        console.log(`[APPOINTMENT] Cart validation passed. Creating appointment...`);
+        const appointmentNumber = generateAppointmentNumber();
+        db.query(
+          "INSERT INTO appointments (user_id, appointment_number, appointment_date, appointment_time) VALUES (?, ?, ?, ?)",
+          [userId, appointmentNumber, appointment_date, appointment_time],
+          (err, result) => {
+            if (err) {
+              console.error('[APPOINTMENT] Error creating appointment:', err);
+              return res.status(500).json({ success: false, message: "Failed to create appointment" });
+            }
+            console.log(`[APPOINTMENT] Appointment created successfully with ID ${result.insertId}`);
+            res.json({ 
+              success: true, 
+              id: result.insertId, 
+              appointment_date, 
+              appointment_time,
+              available_technicians: availableTechs,
+              message: "Appointment created successfully. Please select a technician from the available list."
+            });
+          }
+        );
+      }
+    );
+  } catch (err) {
+    console.error('[APPOINTMENT] Error in availability check:', err);
+    return res.status(500).json({ success: false, message: "Failed to process appointment request" });
+  }
 });
 
 // GET appointments for user
@@ -691,7 +740,7 @@ app.get("/appointments", authenticateToken, (req, res) => {
 });
 
 // ASSIGN EMPLOYEE TO APPOINTMENT (ADMIN)
-app.put("/appointments/:id/assign", (req, res) => {
+app.put("/appointments/:id/assign", async (req, res) => {
   const appointmentId = req.params.id;
   const { assigned_to } = req.body;
 
@@ -699,24 +748,175 @@ app.put("/appointments/:id/assign", (req, res) => {
     return res.status(400).json({ error: "Employee ID is required" });
   }
 
-  db.query(
-    "UPDATE appointments SET assigned_employee_id = ? WHERE id = ?",
-    [assigned_to, appointmentId],
-    (err, result) => {
-      if (err) {
-        console.error("Error assigning employee:", err);
-        return res.status(500).json({ error: "Failed to assign employee" });
+  try {
+    // Get appointment details
+    db.query(
+      "SELECT appointment_date, appointment_time FROM appointments WHERE id = ?",
+      [appointmentId],
+      async (err, appointments) => {
+        if (err || !appointments || appointments.length === 0) {
+          return res.status(404).json({ error: "Appointment not found" });
+        }
+
+        const { appointment_date, appointment_time } = appointments[0];
+
+        // Mark the slot as unavailable
+        try {
+          await appointmentAvailability.markSlotAsUnavailable(db, assigned_to, appointment_date, appointment_time);
+        } catch (slotErr) {
+          console.error("Error marking slot as unavailable:", slotErr);
+        }
+
+        // Update appointment with assigned employee
+        db.query(
+          "UPDATE appointments SET assigned_employee_id = ? WHERE id = ?",
+          [assigned_to, appointmentId],
+          (err, result) => {
+            if (err) {
+              console.error("Error assigning employee:", err);
+              return res.status(500).json({ error: "Failed to assign employee" });
+            }
+
+            res.json({ 
+              success: true, 
+              message: "Employee assigned successfully",
+              appointmentId: appointmentId,
+              assigned_to: assigned_to
+            });
+          }
+        );
+      }
+    );
+  } catch (err) {
+    console.error("Error in assign endpoint:", err);
+    return res.status(500).json({ error: "Failed to process assignment" });
+  }
+});
+
+// CHECK AVAILABILITY for a specific date and time
+app.post("/appointments/check-availability", async (req, res) => {
+  const { appointment_date, appointment_time, technician_id } = req.body;
+
+  if (!appointment_date || !appointment_time) {
+    return res.status(400).json({ success: false, message: "Missing appointment_date or appointment_time" });
+  }
+
+  try {
+    let response = {};
+
+    if (technician_id) {
+      // Check specific technician
+      const isAvailable = await appointmentAvailability.isSlotAvailable(db, technician_id, appointment_date, appointment_time);
+      const appointmentCount = await appointmentAvailability.countAppointmentsOnDate(db, technician_id, appointment_date);
+      const maxAppointments = await appointmentAvailability.getMaxAppointmentsPerDay(db);
+
+      response = {
+        success: true,
+        technician_id,
+        date: appointment_date,
+        time: appointment_time,
+        is_available: isAvailable && appointmentCount < maxAppointments,
+        appointments_today: appointmentCount,
+        max_appointments: maxAppointments,
+        slots_remaining: Math.max(0, maxAppointments - appointmentCount)
+      };
+    } else {
+      // Check all technicians
+      const availableTechs = await appointmentAvailability.getAvailableTechnicians(db, appointment_date, appointment_time);
+      response = {
+        success: true,
+        date: appointment_date,
+        time: appointment_time,
+        available_technicians: availableTechs,
+        total_available: availableTechs.length
+      };
+    }
+
+    res.json(response);
+  } catch (err) {
+    console.error("Error checking availability:", err);
+    return res.status(500).json({ success: false, message: "Failed to check availability" });
+  }
+});
+
+// GET AVAILABLE SLOTS for a specific date
+app.get("/appointments/available-slots/:date", async (req, res) => {
+  const { date } = req.params;
+
+  if (!date) {
+    return res.status(400).json({ success: false, message: "Missing date parameter" });
+  }
+
+  try {
+    const slots = await appointmentAvailability.getAvailableSlotsForDate(db, date);
+    const isFullyBooked = await appointmentAvailability.isDateFullyBooked(db, date);
+
+    res.json({
+      success: true,
+      date,
+      is_fully_booked: isFullyBooked,
+      slots,
+      available_times: await appointmentAvailability.getAvailableTimeSlots(db)
+    });
+  } catch (err) {
+    console.error("Error getting available slots:", err);
+    return res.status(500).json({ success: false, message: "Failed to get available slots" });
+  }
+});
+
+// GET TECHNICIAN SCHEDULE for a date range
+app.get("/appointments/technician/:id/schedule", async (req, res) => {
+  const { id } = req.params;
+  const { start_date, end_date } = req.query;
+
+  if (!id || !start_date || !end_date) {
+    return res.status(400).json({ success: false, message: "Missing required parameters" });
+  }
+
+  try {
+    const slots = await appointmentAvailability.getAvailableTimeSlots(db);
+    const schedule = {};
+
+    // Get all dates in range
+    const current = new Date(start_date);
+    const end = new Date(end_date);
+
+    while (current <= end) {
+      const dateStr = current.toISOString().split('T')[0];
+      const appointmentCount = await appointmentAvailability.countAppointmentsOnDate(db, id, dateStr);
+      const maxAppointments = await appointmentAvailability.getMaxAppointmentsPerDay(db);
+
+      schedule[dateStr] = {
+        appointments_count: appointmentCount,
+        max_appointments: maxAppointments,
+        is_full: appointmentCount >= maxAppointments,
+        available_slots: slots
+      };
+
+      for (const slot of slots) {
+        const isAvailable = await appointmentAvailability.isSlotAvailable(db, id, dateStr, slot);
+        if (!schedule[dateStr].slots) {
+          schedule[dateStr].slots = {};
+        }
+        schedule[dateStr].slots[slot] = isAvailable && appointmentCount < maxAppointments;
       }
 
-      res.json({ 
-        success: true, 
-        message: "Employee assigned successfully",
-        appointmentId: appointmentId,
-        assigned_to: assigned_to
-      });
+      current.setDate(current.getDate() + 1);
     }
-  );
+
+    res.json({
+      success: true,
+      technician_id: id,
+      start_date,
+      end_date,
+      schedule
+    });
+  } catch (err) {
+    console.error("Error getting technician schedule:", err);
+    return res.status(500).json({ success: false, message: "Failed to get technician schedule" });
+  }
 });
+
 
 // ==========================================
 // ORDERS ENDPOINTS
@@ -1131,9 +1331,11 @@ app.get("/admin/products", (req, res) => {
 app.get("/admin/orders", (req, res) => {
   db.query(
     `SELECT o.id, o.order_number, o.user_id, o.total_amount, o.installation_fee, o.downpayment_amount, o.balance_due, o.payment_method, o.status, o.payment_status, o.created_at, o.proof_file,
-            u.fname, u.lname, u.email
+            u.fname, u.lname, u.email, u.contact,
+            od.house, od.city, od.barangay, od.province, od.zip, od.room_size, od.capacity, od.property_type
      FROM orders o
      JOIN user_signup u ON o.user_id = u.id
+     LEFT JOIN order_details od ON o.id = od.order_id
      ORDER BY o.created_at DESC`,
     (err, results) => {
       if (err) {
@@ -1422,10 +1624,12 @@ app.post("/admin/orders/:id/assign-employee", (req, res) => {
 // GET all appointments (admin)
 app.get("/admin/appointments", (req, res) => {
   db.query(
-    `SELECT a.id, a.appointment_number, a.user_id, a.appointment_date, a.appointment_time, a.created_at,
-            u.fname, u.lname, u.email, u.contact
+    `SELECT a.id, a.appointment_number, a.user_id, a.appointment_date, a.appointment_time, a.created_at, a.assigned_employee_id,
+            u.fname, u.lname, u.email, u.contact,
+            e.fname AS technician_fname, e.lname AS technician_lname, e.contact AS technician_contact
      FROM appointments a
      JOIN user_signup u ON a.user_id = u.id
+     LEFT JOIN user_signup e ON a.assigned_employee_id = e.id
      ORDER BY a.appointment_date DESC`,
     (err, results) => {
       if (err) {

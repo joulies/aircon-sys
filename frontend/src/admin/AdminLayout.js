@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import logo from '../logo.png';
 import '../styles/admin.css';
 
 const AdminLayout = ({ children }) => {
@@ -22,7 +23,7 @@ const AdminLayout = ({ children }) => {
     return (
         <div className="layout">
             <nav className="left-nav">
-                <img src="https://via.placeholder.com/150x50?text=VA+Logo" alt="VA Logo" className="nav-logo" />
+                <img src={logo} alt="VA Industrial Electrical Services Logo" className="nav-logo" />
                 <p className="company">VA Industrial Electrical Services</p>
                 <hr className="nav-divider" />
                 
@@ -52,27 +53,11 @@ const AdminLayout = ({ children }) => {
                         </Link>
                     </li>
                     <li>
-                        <Link 
-                            to="/admin/order-analytics" 
-                            className={`nav-link ${isActive('/admin/order-analytics')}`}
-                        >
-                            Order Analytics
-                        </Link>
-                    </li>
-                    <li>
-                        <Link 
-                            to="/admin/appointments" 
+                        <Link
+                            to="/admin/appointments"
                             className={`nav-link ${isActive('/admin/appointments')}`}
                         >
                             Appointments
-                        </Link>
-                    </li>
-                    <li>
-                        <Link 
-                            to="/admin/assign-employees" 
-                            className={`nav-link ${isActive('/admin/assign-employees')}`}
-                        >
-                            Assign Employees
                         </Link>
                     </li>
                     <li>

@@ -154,6 +154,33 @@ CREATE TABLE IF NOT EXISTS refund_requests (
 );
 
 -- ==========================================
+-- TECHNICIAN CONFIG TABLE
+-- ==========================================
+CREATE TABLE IF NOT EXISTS technician_config (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  setting_key VARCHAR(100) NOT NULL UNIQUE,
+  setting_value VARCHAR(255) NOT NULL,
+  description TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- ==========================================
+-- APPOINTMENT SLOTS TABLE
+-- ==========================================
+CREATE TABLE IF NOT EXISTS appointment_slots (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  technician_id INT NOT NULL,
+  appointment_date DATE NOT NULL,
+  appointment_time VARCHAR(10) NOT NULL,
+  is_available TINYINT DEFAULT 1,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (technician_id) REFERENCES user_signup(id) ON DELETE CASCADE,
+  UNIQUE KEY unique_slot (technician_id, appointment_date, appointment_time)
+);
+
+-- ==========================================
 -- SAMPLE DATA
 -- ==========================================
 
@@ -177,3 +204,9 @@ INSERT INTO products (product_name, brand_name, model_name, price, num_stocks, i
 ('Portable AC Unit', 'KOLIN', 'KFS-530EP', 12000.00, 8, '1763779554_aircon-placeholder.jpg'),
 ('Inverter AC Unit', 'MIDEA', 'MSMAAU-10CRN8', 18000.00, 5, '1768803230_midea1.jpg'),
 ('Wall Mounted AC', 'HITACHI', 'RAK-35NHA', 16000.00, 7, '1763779554_aircon-placeholder.jpg');
+
+-- Insert technician configuration
+INSERT INTO technician_config (setting_key, setting_value, description) VALUES
+('max_appointments_per_day', '2', 'Maximum number of appointments per technician per day'),
+('available_time_slots', '08:00,13:00', 'Available appointment time slots (comma-separated HH:MM format)'),
+('default_working_days', 'Monday,Tuesday,Wednesday,Thursday,Friday,Saturday', 'Default working days for technicians');
