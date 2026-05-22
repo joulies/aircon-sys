@@ -15,6 +15,15 @@ require("dotenv").config();
 const app = express();
 const JWT_SECRET = "your_jwt_secret_key_change_in_production";
 
+// ─── PH Time helper ──────────────────────────────────────
+// mysql2 returns DATE columns as UTC JS Date objects.
+// e.g. 2026-05-30 in MySQL → 2026-05-29T16:00:00.000Z in Node
+// formatPHDate shifts +8h and returns a clean YYYY-MM-DD string.
+const formatPHDate = (val) => {
+  if (!val) return null;
+  const d = val instanceof Date ? val : new Date(val);
+  return new Date(d.getTime() + 8 * 60 * 60 * 1000).toISOString().split('T')[0];
+};
 // Configure Gmail SMTP
 const transporter = nodemailer.createTransport({
   service: "gmail",
@@ -795,7 +804,14 @@ app.get("/appointments", authenticateToken, (req, res) => {
       console.error("Error fetching appointments:", err);
       return res.json({ appointments: [] });
     }
-    res.json({ appointments: results });
+    // FIX: mysql2 returns DATE columns as UTC JS Date objects, causing a 1-day
+    // shift for PH users (UTC+8). formatPHDate corrects this at the source so
+    // the frontend always receives the correct YYYY-MM-DD string.
+    const appointments = results.map(a => ({
+      ...a,
+      appointment_date: formatPHDate(a.appointment_date),
+    }));
+    res.json({ appointments });
   });
 });
 

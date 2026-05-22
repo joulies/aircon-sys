@@ -6,7 +6,7 @@ import '../styles/appointment.css';
 
 const API = 'http://localhost:5000';
 
-// ─── Helper ──────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 const to24h = (time12) => {
   const [time, period] = time12.split(' ');
   let [h, m] = time.split(':').map(Number);
@@ -27,7 +27,7 @@ const authHeaders = () => ({
   Authorization: `Bearer ${localStorage.getItem('authToken')}`,
 });
 
-// ─── Philippine Time helpers (UTC+8) ─────────────────────────────────────────
+// ─── Philippine Time helpers (UTC+8) ──────────────────────────────────────────
 const getPhToday = () => {
   const now = new Date();
   const utcMs = now.getTime() + now.getTimezoneOffset() * 60000;
@@ -35,6 +35,20 @@ const getPhToday = () => {
   phDate.setHours(0, 0, 0, 0);
   return phDate;
 };
+
+// Parse a 'YYYY-MM-DD' string as PH midnight (UTC+8) — consistent with getPhToday
+const phDateFromStr = (dateStr) => new Date(dateStr + 'T00:00:00+08:00');
+
+// Format a 'YYYY-MM-DD' string as a readable date in PH time (UTC+8)
+// Uses Intl so it never drifts regardless of browser locale/timezone
+const formatPhDate = (dateStr) =>
+  new Date(dateStr + 'T00:00:00+08:00').toLocaleDateString('en-PH', {
+    timeZone: 'Asia/Manila',
+    weekday: 'short',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
 
 const toLocalDateStr = (year, month, day) => {
   const mm = String(month + 1).padStart(2, '0');
@@ -91,7 +105,6 @@ function DatePicker({ currentMonth, selectedDate, dateAvailability, calendarLoad
         <button onClick={onNextMonth}>&gt;</button>
       </div>
 
-      {/* Loading indicator */}
       {calendarLoading && (
         <div style={{ fontSize: 12, color: '#2c6d91', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', border: '2px solid #2c6d91', borderTopColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />
@@ -99,7 +112,6 @@ function DatePicker({ currentMonth, selectedDate, dateAvailability, calendarLoad
         </div>
       )}
 
-      {/* Legend */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap', fontSize: 12 }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <span style={{ width: 12, height: 12, background: '#d4edda', border: '1px solid #c3e6cb', borderRadius: 2, display: 'inline-block' }} />
@@ -141,6 +153,7 @@ function DatePicker({ currentMonth, selectedDate, dateAvailability, calendarLoad
   );
 }
 
+// FIX: disabled now correctly blocks both isBooked AND isUserOwned slots
 function TimeSlotGrid({ timeSlots, slotStatus, slotCapacity, selectedTime, onSelectTime, dateSelected, userBookedTimes = [] }) {
   if (!dateSelected) {
     return (
@@ -168,24 +181,27 @@ function TimeSlotGrid({ timeSlots, slotStatus, slotCapacity, selectedTime, onSel
           const status      = slotStatus[slot] || 'unknown';
           const cap         = slotCapacity[slot] || {};
           const isBooked    = status === 'booked';
-          const isUserOwned = userBookedTimes.includes(slot); // user already has this slot
+          // FIX: check against 12h labels directly (userBookedTimes is already in 12h)
+          const isUserOwned = userBookedTimes.includes(slot);
+          // FIX: a slot is unavailable if it's fully booked OR already owned by this user
+          const isUnavailable = isBooked || isUserOwned;
           const isSelected  = selectedTime === slot;
           const { booked = 0, total = 0, remaining = 0 } = cap;
 
-          // Colour of the capacity bar fill
           const fillPct  = total > 0 ? (booked / total) * 100 : 0;
           const barColor = isBooked ? '#dc3545' : remaining === 1 ? '#fd7e14' : '#28a745';
 
           return (
             <button
               key={slot}
-              className={`time-slot ${isSelected ? 'selected' : ''} ${isBooked ? 'slot-booked' : ''}`}
-              onClick={() => !isBooked && !isUserOwned && onSelectTime(slot)}
-              disabled={isBooked}
+              className={`time-slot ${isSelected ? 'selected' : ''} ${isUnavailable ? 'slot-booked' : ''}`}
+              // FIX: disable on isUnavailable (covers both fully-booked and user-owned)
+              onClick={() => !isUnavailable && onSelectTime(slot)}
+              disabled={isUnavailable}
               style={{
                 position: 'relative',
-                opacity: isBooked ? 0.65 : 1,
-                cursor: (isBooked || isUserOwned) ? 'not-allowed' : 'pointer',
+                opacity: isUnavailable ? 0.65 : 1,
+                cursor: isUnavailable ? 'not-allowed' : 'pointer',
                 background: isUserOwned ? '#ffeeba' : isBooked ? '#f8d7da' : isSelected ? '#2c6d91' : '#fff',
                 borderColor: isUserOwned ? '#ffc107' : isBooked ? '#f5c6cb' : isSelected ? '#2c6d91' : '#ddd',
                 color: isUserOwned ? '#856404' : isBooked ? '#721c24' : isSelected ? '#fff' : '#333',
@@ -193,17 +209,15 @@ function TimeSlotGrid({ timeSlots, slotStatus, slotCapacity, selectedTime, onSel
                 overflow: 'hidden',
               }}
             >
-              {/* Slot label */}
               <span style={{ fontWeight: 700, fontSize: 15 }}>{slot}</span>
 
-              {/* Capacity text */}
               {total > 0 && (
                 <span style={{
                   display: 'block',
                   fontSize: 11,
                   marginTop: 3,
                   fontWeight: 500,
-                  color: isSelected ? 'rgba(255,255,255,0.85)' : isBooked ? '#721c24' : '#555',
+                  color: isSelected ? 'rgba(255,255,255,0.85)' : isUnavailable ? '#721c24' : '#555',
                 }}>
                   {isUserOwned
                     ? '✗ Already booked by you'
@@ -213,7 +227,6 @@ function TimeSlotGrid({ timeSlots, slotStatus, slotCapacity, selectedTime, onSel
                 </span>
               )}
 
-              {/* Capacity bar */}
               {total > 0 && (
                 <span style={{
                   display: 'block',
@@ -270,40 +283,37 @@ function ConfirmationMessage({ date, time }) {
 function AppointmentPage() {
   const navigate = useNavigate();
 
-  // Calendar
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
   const [dateAvailability, setDateAvailability] = useState({});
   const [calendarLoading, setCalendarLoading] = useState(false);
 
-  // Time slots
-  const [timeSlots, setTimeSlots] = useState([]);       // display labels e.g. ["8:00 AM", "1:00 PM"]
-  const [slotStatus, setSlotStatus] = useState({});     // { "8:00 AM": "available"|"booked" }
-  const [slotCapacity, setSlotCapacity] = useState({}); // { "8:00 AM": { booked, total, remaining } }
+  const [timeSlots, setTimeSlots] = useState([]);
+  const [slotStatus, setSlotStatus] = useState({});
+  const [slotCapacity, setSlotCapacity] = useState({});
   const [selectedTime, setSelectedTime] = useState(null);
 
-  // Cart / validation
   const [cartItems, setCartItems] = useState([]);
   const [cartError, setCartError] = useState(null);
 
-  // Booking state
   const [successMessage, setSuccessMessage] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
-  const [bookedSlots, setBookedSlots] = useState([]); // [{ date: 'YYYY-MM-DD', time: '08:00' }]
+  const [bookedSlots, setBookedSlots] = useState([]);
 
   // ─────────────────────────────────────────────────────────────────────────
+
   const checkExistingAppointment = async () => {
     try {
       const res = await fetch(`${API}/appointments`, { headers: authHeaders() });
       if (!res.ok) return;
       const data = await res.json();
       const today = getPhToday();
-      // Store all upcoming booked date+time pairs
+      // FIX: use > today (strict) so today's date is excluded correctly
       const slots = (data.appointments || [])
-        .filter(a => new Date(a.appointment_date + 'T00:00:00') >= today)
+        .filter(a => phDateFromStr(a.appointment_date.split('T')[0]) > today)
         .map(a => ({
           date: a.appointment_date.split('T')[0],
-          time: a.appointment_time,
+          time: a.appointment_time.slice(0, 5), // normalise to HH:MM
           number: a.appointment_number,
         }));
       setBookedSlots(slots);
@@ -346,7 +356,6 @@ function AppointmentPage() {
     const daysInMonth = new Date(year, mo + 1, 0).getDate();
     const today = getPhToday();
 
-    // Collect future dates only
     const futureDates = [];
     for (let d = 1; d <= daysInMonth; d++) {
       const dateObj = new Date(year, mo, d);
@@ -355,38 +364,22 @@ function AppointmentPage() {
       }
     }
 
-    // Fetch in batches of 5 to avoid flooding the backend
     const BATCH = 5;
     for (let i = 0; i < futureDates.length; i += BATCH) {
       const batch = futureDates.slice(i, i + BATCH);
       const results = await Promise.all(
         batch.map(dateStr =>
           fetch(`${API}/appointments/available-slots/${dateStr}`)
-            .then(r => {
-              if (!r.ok) {
-                console.error(`[Availability] HTTP ${r.status} for ${dateStr}`);
-                return null;
-              }
-              return r.json();
-            })
-            .catch(err => {
-              console.error(`[Availability] Fetch failed for ${dateStr}:`, err);
-              return null;
-            })
+            .then(r => r.ok ? r.json() : null)
+            .catch(() => null)
         )
       );
       const updates = {};
       batch.forEach((dateStr, idx) => {
-        const data = results[idx];
-        if (data) {
-          updates[dateStr] = {
-            is_fully_booked: data.is_fully_booked,
-            has_slots: (data.total_available_slots || 0) > 0,
-          };
-        } else {
-          // Mark as unknown so user can still click and try
-          updates[dateStr] = { is_fully_booked: false, has_slots: true };
-        }
+        const d = results[idx];
+        updates[dateStr] = d
+          ? { is_fully_booked: d.is_fully_booked, has_slots: (d.total_available_slots || 0) > 0 }
+          : { is_fully_booked: false, has_slots: true };
       });
       setDateAvailability(prev => ({ ...prev, ...updates }));
     }
@@ -398,50 +391,44 @@ function AppointmentPage() {
     try {
       const res = await fetch(`${API}/appointments/available-slots/${dateStr}`);
       if (!res.ok) {
-        console.error(`[fetchDateSlots] HTTP ${res.status} for ${dateStr}`);
         setErrorMessage(`Could not load time slots (server error ${res.status}). Please try again.`);
         return;
       }
       const data = await res.json();
-      console.log('[fetchDateSlots] Response:', data);
 
-      // Fallback: if no available_times, use defaults
-      const rawTimes = data.available_times && data.available_times.length > 0
-        ? data.available_times
-        : ['08:00', '13:00'];
-
+      const rawTimes = data.available_times?.length > 0 ? data.available_times : ['08:00', '13:00'];
       const labels = rawTimes.map(to12h);
       setTimeSlots(labels);
 
-      // Build slot status and capacity from slot_capacity (keyed by 24h time)
       const status = {};
       const capacity = {};
       labels.forEach(label => {
         const key24 = to24h(label);
-        const cap = data.slot_capacity?.[key24] || { booked: 0, total: data.total_technicians || 0, remaining: data.total_technicians || 0 };
+        const cap = data.slot_capacity?.[key24] || {
+          booked: 0,
+          total: data.total_technicians || 0,
+          remaining: data.total_technicians || 0,
+        };
         status[label] = cap.remaining > 0 ? 'available' : 'booked';
         capacity[label] = cap;
       });
       setSlotStatus(status);
       setSlotCapacity(capacity);
     } catch (err) {
-      console.error('[AppointmentPage] fetchDateSlots error:', err);
       setErrorMessage('Could not connect to server. Please make sure the backend is running.');
     }
   };
 
-  // ── On mount: validate cart + check for existing appointment ──────────────
+  // ── Lifecycle ─────────────────────────────────────────────────────────────
   useEffect(() => {
     validateCart();
     checkExistingAppointment();
   }, []);
 
-  // ── When month changes, fetch availability for that month ─────────────────
   useEffect(() => {
     fetchMonthAvailability(currentMonth);
   }, [currentMonth, fetchMonthAvailability]);
 
-  // ── When date changes, fetch time slots for that date ─────────────────────
   useEffect(() => {
     if (selectedDate) {
       setSelectedTime(null);
@@ -451,7 +438,6 @@ function AppointmentPage() {
     }
   }, [selectedDate]);
 
-  // ── Redirect on invalid cart items ───────────────────────────────────────
   useEffect(() => {
     if (cartItems.length > 0) {
       const invalid = cartItems.filter(i => i.quantity > i.num_stocks);
@@ -459,9 +445,29 @@ function AppointmentPage() {
     }
   }, [cartItems, navigate]);
 
+  // ── Derived state ─────────────────────────────────────────────────────────
+  const selectedDateStr = selectedDate
+    ? toLocalDateStr(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate())
+    : null;
+
+  // 12h labels already booked by this user on the selected date
+  const userBookedTimesForDate = selectedDateStr
+    ? bookedSlots.filter(s => s.date === selectedDateStr).map(s => to12h(s.time))
+    : [];
+
+  // FIX: derive conflict from the actual selectedTime label (already in 12h)
+  const hasConflict = !!(selectedTime && userBookedTimesForDate.includes(selectedTime));
+
+  const canSubmit =
+    !cartError &&
+    !hasConflict &&
+    !!selectedDate &&
+    !!selectedTime &&
+    slotStatus[selectedTime] === 'available';
+
+  // ── Handlers ──────────────────────────────────────────────────────────────
   const handleDateClick = (day) => {
-    const selected = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
-    setSelectedDate(selected);
+    setSelectedDate(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day));
   };
 
   const handleSubmit = () => {
@@ -473,20 +479,17 @@ function AppointmentPage() {
       setErrorMessage('Please fix your cart before booking.');
       return;
     }
-
-    const apptDateStr = toLocalDateStr(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
-    const apptTime24 = to24h(selectedTime);
-    const conflict = bookedSlots.find(s => s.date === apptDateStr && s.time === apptTime24);
-    if (conflict) {
-      setErrorMessage(`You already have an appointment on ${selectedDate.toDateString()} at ${selectedTime}. Please choose a different date or time.`);
+    // FIX: guard against conflict at submit time too (belt-and-suspenders)
+    if (hasConflict) {
+      setErrorMessage(
+        `You already have an appointment on ${selectedDate.toDateString()} at ${selectedTime}. Please choose a different time.`
+      );
       return;
     }
 
-    // Store in sessionStorage — appointment is NOT saved to DB yet.
-    // It will be recorded when the user confirms at checkout.
     sessionStorage.setItem('pendingAppointment', JSON.stringify({
-      appointment_date: apptDateStr,
-      appointment_time: apptTime24,
+      appointment_date: selectedDateStr,
+      appointment_time: to24h(selectedTime),
       display_date: selectedDate.toDateString(),
       display_time: selectedTime,
     }));
@@ -496,18 +499,6 @@ function AppointmentPage() {
   };
 
   // ─────────────────────────────────────────────────────────────────────────
-
-  const selectedDateStr = selectedDate ? toLocalDateStr(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate()) : null;
-  const selectedTime24 = selectedTime ? to24h(selectedTime) : null;
-  const hasConflict = !!(selectedDateStr && selectedTime24 &&
-    bookedSlots.find(s => s.date === selectedDateStr && s.time === selectedTime24));
-
-  const canSubmit =
-    !cartError &&
-    !hasConflict &&
-    selectedDate &&
-    selectedTime &&
-    slotStatus[selectedTime] === 'available';
 
   return (
     <div>
@@ -539,17 +530,17 @@ function AppointmentPage() {
             </div>
           )}
 
-          {/* Booked slots info — only shown if user has upcoming appointments */}
+          {/* User's existing upcoming bookings */}
           {bookedSlots.length > 0 && (
             <div style={{
               background: '#e8f4f8', border: '1px solid #b8d9ea', borderRadius: 6,
               padding: '10px 16px', marginBottom: 16, color: '#1a5276', fontSize: 13
             }}>
-              <strong>ℹ Your booked time slots (unavailable):</strong>
+              <strong>ℹ Your booked time slots (unavailable to re-book):</strong>
               <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
                 {bookedSlots.map((s, i) => (
                   <li key={i}>
-                    {new Date(s.date + 'T00:00:00').toDateString()} at {to12h(s.time)}
+                    {formatPhDate(s.date)} at {to12h(s.time)}
                     {s.number ? ` (#${s.number})` : ''}
                   </li>
                 ))}
@@ -557,7 +548,6 @@ function AppointmentPage() {
             </div>
           )}
 
-          {/* Main booking UI — only show if cart is valid */}
           {!cartError && (
             <>
               <div className="appointment-content">
@@ -578,13 +568,10 @@ function AppointmentPage() {
                   selectedTime={selectedTime}
                   onSelectTime={setSelectedTime}
                   dateSelected={!!selectedDate}
-                  userBookedTimes={selectedDateStr
-                    ? bookedSlots.filter(s => s.date === selectedDateStr).map(s => to12h(s.time))
-                    : []}
+                  userBookedTimes={userBookedTimesForDate}
                 />
               </div>
 
-              {/* Summary */}
               {selectedDate && selectedTime && !successMessage && (
                 <div className="appointment-summary">
                   <p><strong>Selected Date:</strong> {selectedDate.toDateString()}</p>
@@ -592,12 +579,11 @@ function AppointmentPage() {
                 </div>
               )}
 
-              {/* Success message */}
               {successMessage && (
                 <ConfirmationMessage date={selectedDate} time={selectedTime} />
               )}
 
-              {/* Conflict warning — shown reactively when selected slot matches an existing booking */}
+              {/* Conflict warning */}
               {hasConflict && !successMessage && (
                 <div style={{
                   background: '#fff3cd', border: '1px solid #ffc107', borderRadius: 6,
@@ -607,7 +593,6 @@ function AppointmentPage() {
                 </div>
               )}
 
-              {/* General error message */}
               {errorMessage && !hasConflict && (
                 <div style={{
                   background: '#f8d7da', border: '1px solid #f5c6cb', borderRadius: 6,
@@ -621,12 +606,9 @@ function AppointmentPage() {
                 className="apply-btn"
                 onClick={handleSubmit}
                 disabled={!canSubmit}
-                style={{
-                  opacity: canSubmit ? 1 : 0.6,
-                  cursor: canSubmit ? 'pointer' : 'not-allowed',
-                }}
+                style={{ opacity: canSubmit ? 1 : 0.6, cursor: canSubmit ? 'pointer' : 'not-allowed' }}
               >
-                {`Continue to Checkout`}
+                Continue to Checkout
               </button>
             </>
           )}
