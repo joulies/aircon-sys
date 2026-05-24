@@ -1719,7 +1719,7 @@ app.post("/admin/orders/:id/assign-employee", (req, res) => {
       return res.status(400).json({ success: false, message: "Order is not ready for employee assignment" });
     }
 
-    // Update order status and add appointment
+    // Update order status
     db.query(
       "UPDATE orders SET status = ? WHERE id = ?",
       ['Ready for Installation', id],
@@ -1728,36 +1728,80 @@ app.post("/admin/orders/:id/assign-employee", (req, res) => {
           return res.status(500).json({ success: false, message: "Failed to assign employee" });
         }
 
-        // Create appointment record with employee
-        const appointmentNumber = generateAppointmentNumber();
+        // Check if appointment already exists for this order
         db.query(
-          "INSERT INTO appointments (appointment_number, order_id, user_id, appointment_date, appointment_time, assigned_employee_id) VALUES (?, ?, ?, ?, ?, ?)",
-          [appointmentNumber, id, order.user_id, new Date(), '00:00', employee_id],
-          (err) => {
-            if (err) {
-              return res.status(500).json({ success: false, message: "Failed to create appointment" });
+          "SELECT id, appointment_number FROM appointments WHERE order_id = ?",
+          [id],
+          (err, appointments) => {
+            if (appointments && appointments.length > 0) {
+              // Update existing appointment with assigned employee
+              const appointmentId = appointments[0].id;
+              const appointmentNumber = appointments[0].appointment_number;
+
+              db.query(
+                "UPDATE appointments SET assigned_employee_id = ? WHERE id = ?",
+                [employee_id, appointmentId],
+                (err) => {
+                  if (err) {
+                    return res.status(500).json({ success: false, message: "Failed to assign employee to appointment" });
+                  }
+
+                  // Add notification to user
+                  const notificationMessage = order.payment_method === 'cod'
+                    ? 'An employee has been assigned for your installation. Please prepare payment for the appointment date. You will receive the appointment details soon.'
+                    : 'An employee has been assigned for your installation. You will receive the appointment details soon.';
+
+                  db.query(
+                    "INSERT INTO notifications (user_id, message, notification_type) VALUES (?, ?, ?)",
+                    [order.user_id, notificationMessage, 'info'],
+                    (err) => {
+                      if (err) console.error("Error creating notification:", err);
+                    }
+                  );
+
+                  res.json({
+                    success: true,
+                    message: "Employee assigned successfully",
+                    orderId: id,
+                    appointmentNumber: appointmentNumber,
+                    status: 'Ready for Installation'
+                  });
+                }
+              );
+            } else {
+              // Create new appointment record with employee
+              const appointmentNumber = generateAppointmentNumber();
+              db.query(
+                "INSERT INTO appointments (appointment_number, order_id, user_id, appointment_date, appointment_time, assigned_employee_id) VALUES (?, ?, ?, ?, ?, ?)",
+                [appointmentNumber, id, order.user_id, new Date(), '00:00', employee_id],
+                (err) => {
+                  if (err) {
+                    return res.status(500).json({ success: false, message: "Failed to create appointment" });
+                  }
+
+                  // Add notification to user
+                  const notificationMessage = order.payment_method === 'cod'
+                    ? 'An employee has been assigned for your installation. Please prepare payment for the appointment date. You will receive the appointment details soon.'
+                    : 'An employee has been assigned for your installation. You will receive the appointment details soon.';
+
+                  db.query(
+                    "INSERT INTO notifications (user_id, message, notification_type) VALUES (?, ?, ?)",
+                    [order.user_id, notificationMessage, 'info'],
+                    (err) => {
+                      if (err) console.error("Error creating notification:", err);
+                    }
+                  );
+
+                  res.json({
+                    success: true,
+                    message: "Employee assigned successfully",
+                    orderId: id,
+                    appointmentNumber: appointmentNumber,
+                    status: 'Ready for Installation'
+                  });
+                }
+              );
             }
-
-            // Add notification to user
-            const notificationMessage = order.payment_method === 'cod'
-              ? 'An employee has been assigned for your installation. Please prepare payment for the appointment date. You will receive the appointment details soon.'
-              : 'An employee has been assigned for your installation. You will receive the appointment details soon.';
-
-            db.query(
-              "INSERT INTO notifications (user_id, message, notification_type) VALUES (?, ?, ?)",
-              [order.user_id, notificationMessage, 'info'],
-              (err) => {
-                if (err) console.error("Error creating notification:", err);
-              }
-            );
-
-            res.json({
-              success: true,
-              message: "Employee assigned successfully",
-              orderId: id,
-              appointmentNumber: appointmentNumber,
-              status: 'Ready for Installation'
-            });
           }
         );
       }
