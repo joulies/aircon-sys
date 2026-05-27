@@ -39,11 +39,14 @@ function getTotalTechnicians(db) {
 }
 
 // Number of appointments already booked at a specific date+time (= technicians consumed)
+// Excludes appointments from cancelled or refund_requested orders to allow rebooking
 function getBookingsAtSlot(db, date, time) {
   return new Promise((resolve) => {
     db.query(
-      `SELECT COUNT(*) as cnt FROM appointments
-       WHERE appointment_date = ? AND appointment_time = ?`,
+      `SELECT COUNT(*) as cnt FROM appointments a
+       LEFT JOIN orders o ON a.order_id = o.id
+       WHERE a.appointment_date = ? AND a.appointment_time = ?
+         AND (a.order_id IS NULL OR o.status NOT IN ('cancelled', 'refund_requested'))`,
       [date, time],
       (err, rows) => resolve(err ? 0 : rows[0].cnt || 0)
     );

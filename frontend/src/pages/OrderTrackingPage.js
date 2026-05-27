@@ -10,9 +10,15 @@ function OrderTrackingPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [timeline, setTimeline] = useState([]);
+  const [showRefundModal, setShowRefundModal] = useState(false);
+  const [refundReason, setRefundReason] = useState('');
+  const [submittingRefund, setSubmittingRefund] = useState(false);
+  const [refundRequest, setRefundRequest] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const loadOrderDetails = useCallback(async () => {
     try {
+      setRefreshing(true);
       const token = localStorage.getItem('authToken');
       const response = await fetch(`http://localhost:5000/orders/${orderId}`, {
         headers: {
@@ -23,15 +29,37 @@ function OrderTrackingPage() {
       const data = await response.json();
       setOrder(data.order);
       buildTimeline(data.order);
+
+      // Fetch refund request status
+      try {
+        const refundRes = await fetch(`http://localhost:5000/orders/${orderId}/refund-status`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (refundRes.ok) {
+          const refundData = await refundRes.json();
+          setRefundRequest(refundData);
+        }
+      } catch (err) {
+        // Refund endpoint might not exist yet, ignore
+      }
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [orderId]);
 
   useEffect(() => {
     loadOrderDetails();
+  }, [loadOrderDetails]);
+
+  // Auto-refresh every 30 seconds to show real-time updates
+  useEffect(() => {
+    const interval = setInterval(loadOrderDetails, 30000);
+    return () => clearInterval(interval);
   }, [loadOrderDetails]);
 
   const buildTimeline = (orderData) => {
@@ -64,7 +92,53 @@ function OrderTrackingPage() {
     setTimeline(timelineSteps);
   };
 
+  const canCancelOrder = () => {
+    if (!order) return false;
+
+    // Disable if refund request exists
+    if (refundRequest) {
+      return false;
+    }
+
+    if (order.status?.toLowerCase() === 'completed' || order.status?.toLowerCase() === 'cancelled') {
+      return false;
+    }
+
+    // Check appointment date
+    if (order.appointment?.date) {
+      const appointmentDate = new Date(order.appointment.date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (appointmentDate < today) {
+        return false;
+      }
+    }
+
+    // For PayMaya/GCash, require payment confirmation
+    if (order.payment_method?.toLowerCase() !== 'cod') {
+      const paymentStatus = order.payment_status?.toLowerCase();
+      return paymentStatus === 'half paid' || paymentStatus === 'fully_paid';
+    }
+
+    // For COD, only check appointment date (already checked above)
+    return true;
+  };
+
   const handleCancelOrder = async () => {
+    if (!canCancelOrder()) {
+      if (refundRequest) {
+        const status = refundRequest.status?.charAt(0).toUpperCase() + refundRequest.status?.slice(1);
+        alert(`Cannot cancel order. Your refund request is currently ${status.toLowerCase()}.`);
+      } else if (order.payment_method?.toLowerCase() !== 'cod' &&
+          (order.payment_status?.toLowerCase() === 'pending confirmation' ||
+           order.payment_status?.toLowerCase() === 'unpaid')) {
+        alert('Your payment must be confirmed by our admin team before you can cancel this order.');
+      } else {
+        alert('Cannot cancel this order. The appointment date has passed.');
+      }
+      return;
+    }
+
     if (!window.confirm('Are you sure you want to cancel this order?')) return;
 
     try {
@@ -80,7 +154,8 @@ function OrderTrackingPage() {
         alert('Order cancelled successfully');
         loadOrderDetails();
       } else {
-        alert('Failed to cancel order');
+        const data = await response.json();
+        alert(data.message || 'Failed to cancel order');
       }
     } catch (err) {
       console.error('Error cancelling order:', err);
@@ -89,19 +164,27 @@ function OrderTrackingPage() {
   };
 
   const handleRequestRefund = async () => {
-    if (!window.confirm('Request refund for this order?')) return;
+    if (!refundReason.trim()) {
+      alert('Please provide a reason for the refund request');
+      return;
+    }
 
+    setSubmittingRefund(true);
     try {
       const token = localStorage.getItem('authToken');
       const response = await fetch(`http://localhost:5000/orders/${orderId}/refund`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ reason: refundReason })
       });
 
       if (response.ok) {
-        alert('Refund request submitted');
+        alert('Refund request submitted successfully');
+        setShowRefundModal(false);
+        setRefundReason('');
         loadOrderDetails();
       } else {
         const data = await response.json();
@@ -110,6 +193,8 @@ function OrderTrackingPage() {
     } catch (err) {
       console.error('Error requesting refund:', err);
       alert('Error requesting refund');
+    } finally {
+      setSubmittingRefund(false);
     }
   };
 
@@ -121,8 +206,8 @@ function OrderTrackingPage() {
   if (error) return <div><Header /><p style={{ textAlign: 'center', color: 'red', padding: '20px' }}>{error}</p><Footer /></div>;
   if (!order) return <div><Header /><p style={{ textAlign: 'center', padding: '20px' }}>Order not found</p><Footer /></div>;
 
-  const canCancel = order.status?.toLowerCase() !== 'completed' && order.status?.toLowerCase() !== 'cancelled';
-  const canRefund = order.status?.toLowerCase() === 'cancelled' && (order.payment_method?.toLowerCase() === 'gcash' || order.payment_method?.toLowerCase() === 'paymaya');
+  const canCancel = canCancelOrder();
+  const canRefund = order.status?.toLowerCase() === 'cancelled' && (order.payment_method?.toLowerCase() === 'gcash' || order.payment_method?.toLowerCase() === 'paymaya') && !refundRequest;
 
   return (
     <div>
@@ -144,13 +229,37 @@ function OrderTrackingPage() {
           </div>
 
           <div className="order-header-buttons">
+            {refundRequest && (
+              <div style={{
+                backgroundColor: refundRequest.status === 'pending' ? '#fff3cd' : refundRequest.status === 'approved' ? '#d4edda' : '#f8d7da',
+                border: `1px solid ${refundRequest.status === 'pending' ? '#ffeaa7' : refundRequest.status === 'approved' ? '#c3e6cb' : '#f5c6cb'}`,
+                borderRadius: '4px',
+                padding: '12px',
+                marginBottom: '15px',
+                color: refundRequest.status === 'pending' ? '#856404' : refundRequest.status === 'approved' ? '#155724' : '#721c24'
+              }}>
+                <p style={{ margin: 0, fontWeight: '600' }}>
+                  💬 Refund Request {refundRequest.status?.charAt(0).toUpperCase() + refundRequest.status?.slice(1)}
+                </p>
+                <p style={{ margin: '5px 0 0 0', fontSize: '13px' }}>
+                  {refundRequest.status === 'pending' && 'Our team is reviewing your refund request.'}
+                  {refundRequest.status === 'approved' && 'Your refund has been approved. You will receive it within 3-5 business days.'}
+                  {refundRequest.status === 'rejected' && 'Your refund request has been rejected.'}
+                </p>
+              </div>
+            )}
             {canCancel && (
               <button className="action-btn cancel-btn" onClick={handleCancelOrder}>
                 <i className="fa fa-times"></i> Cancel Order
               </button>
             )}
+            {!canCancel && !refundRequest && (
+              <button className="action-btn cancel-btn" disabled style={{ opacity: 0.5, cursor: 'not-allowed' }}>
+                <i className="fa fa-times"></i> Cancel Order (Unavailable)
+              </button>
+            )}
             {canRefund && (
-              <button className="action-btn refund-btn" onClick={handleRequestRefund}>
+              <button className="action-btn refund-btn" onClick={() => setShowRefundModal(true)}>
                 <i className="fa fa-undo"></i> Request Refund
               </button>
             )}
@@ -159,6 +268,65 @@ function OrderTrackingPage() {
             </button>
           </div>
         </div>
+
+        {/* Refund Modal */}
+        {showRefundModal && (
+          <div style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex',
+            alignItems: 'center', justifyContent: 'center', zIndex: 1000
+          }}>
+            <div style={{
+              backgroundColor: 'white', borderRadius: '8px', padding: '30px',
+              maxWidth: '500px', width: '90%'
+            }}>
+              <h2>Request Refund</h2>
+              <p style={{ color: '#666', marginBottom: '20px' }}>
+                Please provide a reason for your refund request. Our team will review and respond within 3-5 business days.
+              </p>
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
+                  Reason for Refund: <span style={{ color: 'red' }}>*</span>
+                </label>
+                <textarea
+                  value={refundReason}
+                  onChange={(e) => setRefundReason(e.target.value)}
+                  placeholder="Enter your reason for requesting a refund..."
+                  style={{
+                    width: '100%', padding: '10px', border: '1px solid #ddd',
+                    borderRadius: '4px', fontSize: '14px', fontFamily: 'Arial, sans-serif',
+                    minHeight: '80px', resize: 'vertical'
+                  }}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => {
+                    setShowRefundModal(false);
+                    setRefundReason('');
+                  }}
+                  disabled={submittingRefund}
+                  style={{
+                    padding: '10px 20px', backgroundColor: '#ccc',
+                    color: '#333', border: 'none', borderRadius: '4px', cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleRequestRefund}
+                  disabled={submittingRefund}
+                  style={{
+                    padding: '10px 20px', backgroundColor: '#007bff',
+                    color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer'
+                  }}
+                >
+                  {submittingRefund ? 'Submitting...' : 'Submit Request'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Timeline */}
         <div className="timeline-section">

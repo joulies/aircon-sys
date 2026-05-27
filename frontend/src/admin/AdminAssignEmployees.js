@@ -9,6 +9,9 @@ const AdminAssignEmployees = () => {
     const [selectedEmployees, setSelectedEmployees] = useState({});
     const [assignmentStatus, setAssignmentStatus] = useState({});
     const [editingId, setEditingId] = useState(null);
+    const [unavailableEmployees, setUnavailableEmployees] = useState({});
+    const [assignmentError, setAssignmentError] = useState(null);
+    const [assignmentSuccess, setAssignmentSuccess] = useState(null);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -30,8 +33,8 @@ const AdminAssignEmployees = () => {
                     if (apt.assigned_employee_id) {
                         const assignedEmployee = employeesData.find(e => e.id === apt.assigned_employee_id);
                         if (assignedEmployee) {
-                            status[apt.id] = { 
-                                assigned: true, 
+                            status[apt.id] = {
+                                assigned: true,
                                 employeeId: apt.assigned_employee_id,
                                 employeeName: `${assignedEmployee.fname} ${assignedEmployee.lname}`
                             };
@@ -39,6 +42,24 @@ const AdminAssignEmployees = () => {
                     }
                 });
                 setAssignmentStatus(status);
+
+                // Fetch unavailable employees for each appointment
+                const unavailableMap = {};
+                for (const apt of appointmentsData.slice(0, 10)) {
+                    try {
+                        const unavailableResponse = await fetch(`http://localhost:5000/appointments/${apt.id}/unavailable-employees`);
+                        if (unavailableResponse.ok) {
+                            const data = await unavailableResponse.json();
+                            unavailableMap[apt.id] = data.unavailable_employee_ids || [];
+                            console.log(`[FRONTEND] Appointment ${apt.id} unavailable employees:`, unavailableMap[apt.id]);
+                        } else {
+                            console.warn(`[FRONTEND] Failed to fetch unavailable employees for appointment ${apt.id}`);
+                        }
+                    } catch (err) {
+                        console.error(`[FRONTEND] Error fetching unavailable employees for appointment ${apt.id}:`, err);
+                    }
+                }
+                setUnavailableEmployees(unavailableMap);
             } catch (err) {
                 console.error('Error fetching data:', err);
                 setError(err.message);
@@ -59,13 +80,18 @@ const AdminAssignEmployees = () => {
 
     const handleConfirmAssignment = async (appointmentId) => {
         const selectedEmpId = selectedEmployees[appointmentId];
-        
+
+        console.log(`[CONFIRM] Appointment ${appointmentId}, SelectedEmpId=${selectedEmpId}`);
+
         if (!selectedEmpId) {
-            alert('Please select an employee first');
+            setAssignmentError('Please select an employee first');
             return;
         }
 
         try {
+            setAssignmentError(null);
+            setAssignmentSuccess(null);
+            console.log(`[CONFIRM] Assigning employee ${selectedEmpId} to appointment ${appointmentId}`);
             const response = await fetch(`http://localhost:5000/appointments/${appointmentId}/assign`, {
                 method: 'PUT',
                 headers: {
@@ -74,22 +100,29 @@ const AdminAssignEmployees = () => {
                 body: JSON.stringify({ assigned_to: selectedEmpId })
             });
 
+            const data = await response.json();
+
             if (!response.ok) {
-                throw new Error('Failed to assign employee');
+                const errorMsg = data.error || data.message || 'Failed to assign employee';
+                console.error('Assignment error:', errorMsg);
+                setAssignmentError(errorMsg);
+                throw new Error(errorMsg);
             }
 
             const selectedEmployee = employees.find(e => e.id === parseInt(selectedEmpId));
-            
+            const apt = appointments.find(a => a.id === appointmentId);
+
             setAssignmentStatus({
                 ...assignmentStatus,
                 [appointmentId]: { assigned: true, employeeId: selectedEmpId, employeeName: `${selectedEmployee.fname} ${selectedEmployee.lname}` }
             });
 
             setEditingId(null);
-            alert('Employee assigned successfully!');
+            setAssignmentSuccess(`✓ ${selectedEmployee.fname} ${selectedEmployee.lname} assigned to ${apt.fname} ${apt.lname} on ${new Date(apt.appointment_date).toLocaleDateString()} at ${apt.appointment_time}`);
+            setTimeout(() => setAssignmentSuccess(null), 4000);
         } catch (err) {
             console.error('Error assigning employee:', err);
-            alert('Error assigning employee: ' + err.message);
+            setAssignmentError(err.message);
         }
     };
 
@@ -134,6 +167,56 @@ const AdminAssignEmployees = () => {
                 <h2>Assign Employees to Appointments</h2>
             </div>
 
+            {assignmentError && (
+                <div style={{
+                    padding: '12px 16px',
+                    marginBottom: '16px',
+                    backgroundColor: '#f8d7da',
+                    color: '#721c24',
+                    border: '1px solid #f5c6cb',
+                    borderRadius: '4px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                }}>
+                    <strong>⚠ Error:</strong>
+                    <div style={{ flex: 1, marginLeft: '12px' }}>{assignmentError}</div>
+                    <button onClick={() => setAssignmentError(null)} style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#721c24',
+                        cursor: 'pointer',
+                        fontSize: '18px',
+                        padding: '0'
+                    }}>×</button>
+                </div>
+            )}
+
+            {assignmentSuccess && (
+                <div style={{
+                    padding: '12px 16px',
+                    marginBottom: '16px',
+                    backgroundColor: '#d4edda',
+                    color: '#155724',
+                    border: '1px solid #c3e6cb',
+                    borderRadius: '4px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                }}>
+                    <strong>✓ Success:</strong>
+                    <div style={{ flex: 1, marginLeft: '12px' }}>{assignmentSuccess}</div>
+                    <button onClick={() => setAssignmentSuccess(null)} style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#155724',
+                        cursor: 'pointer',
+                        fontSize: '18px',
+                        padding: '0'
+                    }}>×</button>
+                </div>
+            )}
+
             <div className="recent-section">
                 {appointments.length === 0 ? (
                     <p style={{ color: '#666', textAlign: 'center', padding: '20px' }}>No appointments found</p>
@@ -174,24 +257,39 @@ const AdminAssignEmployees = () => {
                                                     ✓ {assignmentStatus[apt.id].employeeName}
                                                 </span>
                                             ) : (
-                                                <select
-                                                    value={selectedEmployees[apt.id] || ''}
-                                                    onChange={(e) => handleEmployeeSelect(apt.id, e.target.value)}
-                                                    style={{
-                                                        padding: '8px',
-                                                        borderRadius: '4px',
-                                                        border: '1px solid #ddd',
-                                                        cursor: 'pointer',
-                                                        width: '100%'
-                                                    }}
-                                                >
-                                                    <option value="">Select Employee</option>
-                                                    {employees.map((emp) => (
-                                                        <option key={emp.id} value={emp.id}>
-                                                            {emp.fname} {emp.lname}
-                                                        </option>
-                                                    ))}
-                                                </select>
+                                                <>
+                                                    <select
+                                                        value={selectedEmployees[apt.id] || ''}
+                                                        onChange={(e) => handleEmployeeSelect(apt.id, e.target.value)}
+                                                        style={{
+                                                            padding: '8px',
+                                                            borderRadius: '4px',
+                                                            border: '1px solid #ddd',
+                                                            cursor: 'pointer',
+                                                            width: '100%'
+                                                        }}
+                                                    >
+                                                        <option value="">Select Employee</option>
+                                                        {employees.filter(emp => {
+                                                            const isUnavailable = unavailableEmployees[apt.id]?.includes(emp.id);
+                                                            return !isUnavailable;
+                                                        }).map((emp) => (
+                                                            <option key={emp.id} value={emp.id}>
+                                                                {emp.fname} {emp.lname}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                    {unavailableEmployees[apt.id]?.length > 0 && (
+                                                        <div style={{
+                                                            fontSize: '11px',
+                                                            color: '#999',
+                                                            marginTop: '4px',
+                                                            fontStyle: 'italic'
+                                                        }}>
+                                                            {unavailableEmployees[apt.id].length} employee(s) unavailable at this time
+                                                        </div>
+                                                    )}
+                                                </>
                                             )}
                                         </td>
                                         <td style={{ padding: '12px' }}>

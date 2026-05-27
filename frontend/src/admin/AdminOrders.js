@@ -15,6 +15,9 @@ const AdminOrders = () => {
     const [showDetailsModal, setShowDetailsModal] = useState(false);
     const [selectedEmployee, setSelectedEmployee] = useState('');
     const [rejectionReason, setRejectionReason] = useState('');
+    const [assignmentError, setAssignmentError] = useState(null);
+    const [assignmentSuccess, setAssignmentSuccess] = useState(null);
+    const [unavailableEmployees, setUnavailableEmployees] = useState([]);
 
     useEffect(() => {
         fetchAllData();
@@ -92,27 +95,70 @@ const AdminOrders = () => {
         }
     };
 
+    const fetchUnavailableEmployees = async (order) => {
+        try {
+            // Get appointment for this order
+            const appointmentsRes = await fetch('http://localhost:5000/admin/appointments');
+            const appointmentsData = await appointmentsRes.json();
+
+            const orderAppointment = appointmentsData.find(apt => apt.user_id === order.user_id && apt.order_id === order.id);
+
+            if (orderAppointment) {
+                // Get unavailable employees for this appointment
+                const unavailRes = await fetch(`http://localhost:5000/appointments/${orderAppointment.id}/unavailable-employees`);
+                if (unavailRes.ok) {
+                    const data = await unavailRes.json();
+                    setUnavailableEmployees(data.unavailable_employee_ids || []);
+                    console.log('[ORDERS] Unavailable employees:', data.unavailable_employee_ids);
+                }
+            }
+        } catch (err) {
+            console.error('[ORDERS] Error fetching unavailable employees:', err);
+        }
+    };
+
     const handleAssignEmployee = async (orderId) => {
         if (!selectedEmployee) {
-            alert('Please select an employee');
+            setAssignmentError('Please select an employee');
             return;
         }
 
         try {
+            setAssignmentError(null);
+            setAssignmentSuccess(null);
             const response = await fetch(`http://localhost:5000/admin/orders/${orderId}/assign-employee`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ employee_id: selectedEmployee })
             });
 
-            if (!response.ok) throw new Error('Failed to assign employee');
-            alert('Employee assigned successfully!');
+            const data = await response.json();
+
+            if (!response.ok) {
+                const errorMsg = data.error || data.message || 'Failed to assign employee';
+                console.error('Assignment error:', errorMsg, data);
+
+                let detailedError = errorMsg;
+                if (data.error && data.error.includes('already assigned')) {
+                    detailedError = `❌ Time Slot Conflict: ${data.error} at ${data.time} on ${data.date}`;
+                } else if (data.error && data.error.includes('daily appointment limit')) {
+                    detailedError = `⚠ Employee Fully Booked: ${data.error}`;
+                }
+
+                setAssignmentError(detailedError);
+                return;
+            }
+
+            const selectedEmp = employees.find(e => e.id === parseInt(selectedEmployee));
+            setAssignmentSuccess(`✓ Employee ${selectedEmp.fname} ${selectedEmp.lname} assigned successfully to ${selectedOrder.fname} ${selectedOrder.lname}`);
             setShowAssignModal(false);
             setSelectedEmployee('');
+            setUnavailableEmployees([]);
+            setTimeout(() => setAssignmentSuccess(null), 4000);
             fetchAllData();
         } catch (err) {
-            console.error('Error:', err);
-            alert('Error assigning employee');
+            console.error('Error assigning employee:', err);
+            setAssignmentError('Error: ' + err.message);
         }
     };
 
@@ -217,6 +263,22 @@ const AdminOrders = () => {
                     maxWidth: '500px', width: '90%'
                 }}>
                     <h2>Assign Employee</h2>
+
+                    {assignmentError && (
+                        <div style={{
+                            padding: '14px',
+                            marginBottom: '15px',
+                            backgroundColor: '#f8d7da',
+                            color: '#721c24',
+                            border: '2px solid #f5c6cb',
+                            borderRadius: '4px',
+                            fontSize: '13px',
+                            lineHeight: '1.5'
+                        }}>
+                            {assignmentError}
+                        </div>
+                    )}
+
                     <div style={{ marginBottom: '20px' }}>
                         <p><strong>Order #:</strong> {selectedOrder.order_number}</p>
                         <p><strong>Customer:</strong> {selectedOrder.fname} {selectedOrder.lname}</p>
@@ -250,12 +312,34 @@ const AdminOrders = () => {
                             }}
                         >
                             <option value="">-- Select an employee --</option>
-                            {employees.map((emp) => (
-                                <option key={emp.id} value={emp.id}>
-                                    {emp.fname} {emp.lname} - {emp.email}
-                                </option>
-                            ))}
+                            {employees.map((emp) => {
+                                const isUnavailable = unavailableEmployees.includes(emp.id);
+                                return (
+                                    <option
+                                        key={emp.id}
+                                        value={emp.id}
+                                        disabled={isUnavailable}
+                                        style={{
+                                            backgroundColor: isUnavailable ? '#f0f0f0' : 'white',
+                                            color: isUnavailable ? '#999' : '#333',
+                                            opacity: isUnavailable ? 0.6 : 1
+                                        }}
+                                    >
+                                        {emp.fname} {emp.lname} {isUnavailable ? '(Not available)' : ''}
+                                    </option>
+                                );
+                            })}
                         </select>
+                        {unavailableEmployees.length > 0 && (
+                            <div style={{
+                                fontSize: '12px',
+                                color: '#999',
+                                marginTop: '8px',
+                                fontStyle: 'italic'
+                            }}>
+                                ⚠ {unavailableEmployees.length} employee(s) already assigned at this time
+                            </div>
+                        )}
                     </div>
 
                     <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
@@ -263,6 +347,8 @@ const AdminOrders = () => {
                             onClick={() => {
                                 setShowAssignModal(false);
                                 setSelectedEmployee('');
+                                setAssignmentError(null);
+                                setUnavailableEmployees([]);
                             }}
                             style={{
                                 padding: '10px 20px', backgroundColor: '#ccc',
@@ -552,7 +638,7 @@ const AdminOrders = () => {
                                         borderRadius: '4px',
                                         fontSize: '12px'
                                     }}>
-                                        {order.payment_method === 'cod' ? 'Awaiting Assignment' : 'Paid - Awaiting Assignment'}
+                                        {order.payment_method === 'cod' ? 'Awaiting Assignment' : 'Half Paid - Awaiting Assignment'}
                                     </span>
                                 </td>
                                 <td style={{ padding: '12px' }}>
@@ -560,12 +646,16 @@ const AdminOrders = () => {
                                         onClick={() => {
                                             setSelectedOrder(order);
                                             setShowAssignModal(true);
+                                            fetchUnavailableEmployees(order);
                                         }}
+                                        disabled={order.status === 'cancelled'}
                                         style={{
-                                            padding: '5px 10px', backgroundColor: '#0066cc',
+                                            padding: '5px 10px', backgroundColor: order.status === 'cancelled' ? '#ccc' : '#0066cc',
                                             color: 'white', border: 'none', borderRadius: '4px',
-                                            cursor: 'pointer', fontSize: '12px'
+                                            cursor: order.status === 'cancelled' ? 'not-allowed' : 'pointer', fontSize: '12px',
+                                            opacity: order.status === 'cancelled' ? 0.6 : 1
                                         }}
+                                        title={order.status === 'cancelled' ? 'Cannot assign to cancelled orders' : ''}
                                     >
                                         Assign Employee
                                     </button>
@@ -636,6 +726,31 @@ const AdminOrders = () => {
             <div className="page-header">
                 <h2>Orders Management</h2>
             </div>
+
+            {assignmentSuccess && (
+                <div style={{
+                    padding: '12px 16px',
+                    marginBottom: '16px',
+                    backgroundColor: '#d4edda',
+                    color: '#155724',
+                    border: '1px solid #c3e6cb',
+                    borderRadius: '4px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                }}>
+                    <strong>✓ Success:</strong>
+                    <div style={{ flex: 1, marginLeft: '12px' }}>{assignmentSuccess}</div>
+                    <button onClick={() => setAssignmentSuccess(null)} style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#155724',
+                        cursor: 'pointer',
+                        fontSize: '18px',
+                        padding: '0'
+                    }}>×</button>
+                </div>
+            )}
 
             <div style={{ marginBottom: '20px', display: 'flex', gap: '10px', borderBottom: '1px solid #eee' }}>
                 <button

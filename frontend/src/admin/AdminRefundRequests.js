@@ -5,25 +5,153 @@ const AdminRefundRequests = () => {
     const [refundRequests, setRefundRequests] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [selectedRequest, setSelectedRequest] = useState(null);
+    const [showRejectModal, setShowRejectModal] = useState(false);
+    const [rejectionReason, setRejectionReason] = useState('');
+    const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
-        const fetchRefundRequests = async () => {
-            try {
-                setLoading(true);
-                const response = await fetch('http://localhost:5000/admin/refund-requests');
-                if (!response.ok) throw new Error('Failed to fetch refund requests');
-                const data = await response.json();
-                setRefundRequests(data);
-            } catch (err) {
-                console.error('Error fetching refund requests:', err);
-                setError(err.message);
-            } finally {
-                setLoading(false);
-            }
-        };
-
         fetchRefundRequests();
     }, []);
+
+    const fetchRefundRequests = async () => {
+        try {
+            setLoading(true);
+            const response = await fetch('http://localhost:5000/admin/refund-requests');
+            if (!response.ok) throw new Error('Failed to fetch refund requests');
+            const data = await response.json();
+            setRefundRequests(data);
+        } catch (err) {
+            console.error('Error fetching refund requests:', err);
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleApprove = async (requestId) => {
+        if (!window.confirm('Approve this refund request?')) return;
+
+        setSubmitting(true);
+        try {
+            const response = await fetch(`http://localhost:5000/admin/refund-requests/${requestId}/approve`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            if (!response.ok) throw new Error('Failed to approve refund request');
+            alert('Refund request approved successfully');
+            fetchRefundRequests();
+        } catch (err) {
+            console.error('Error:', err);
+            alert('Error approving refund request');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const handleRejectClick = (request) => {
+        setSelectedRequest(request);
+        setShowRejectModal(true);
+        setRejectionReason('');
+    };
+
+    const handleRejectSubmit = async () => {
+        if (!rejectionReason.trim()) {
+            alert('Please provide a reason for rejection');
+            return;
+        }
+
+        setSubmitting(true);
+        try {
+            const response = await fetch(`http://localhost:5000/admin/refund-requests/${selectedRequest.id}/reject`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reason: rejectionReason })
+            });
+
+            if (!response.ok) throw new Error('Failed to reject refund request');
+            alert('Refund request rejected successfully');
+            setShowRejectModal(false);
+            setSelectedRequest(null);
+            setRejectionReason('');
+            fetchRefundRequests();
+        } catch (err) {
+            console.error('Error:', err);
+            alert('Error rejecting refund request');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const renderRejectModal = () => {
+        if (!showRejectModal || !selectedRequest) return null;
+
+        return (
+            <div style={{
+                position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex',
+                alignItems: 'center', justifyContent: 'center', zIndex: 1000
+            }}>
+                <div style={{
+                    backgroundColor: 'white', borderRadius: '8px', padding: '30px',
+                    maxWidth: '600px', width: '90%', maxHeight: '80vh', overflowY: 'auto'
+                }}>
+                    <h2>Reject Refund Request</h2>
+                    <div style={{ marginBottom: '20px' }}>
+                        <p><strong>Request ID:</strong> #{selectedRequest.id}</p>
+                        <p><strong>Customer:</strong> {selectedRequest.fname} {selectedRequest.lname}</p>
+                        <p><strong>Order #:</strong> {selectedRequest.order_number}</p>
+                        <p><strong>Amount:</strong> ₱{parseFloat(selectedRequest.amount).toFixed(2)}</p>
+                        <p><strong>Original Reason:</strong> {selectedRequest.reason}</p>
+                    </div>
+
+                    <div style={{ marginBottom: '20px' }}>
+                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
+                            Rejection Reason: <span style={{ color: 'red' }}>*</span>
+                        </label>
+                        <textarea
+                            value={rejectionReason}
+                            onChange={(e) => setRejectionReason(e.target.value)}
+                            placeholder="Enter reason for rejection (e.g., Duplicate request, Invalid claim, etc.)"
+                            style={{
+                                width: '100%', padding: '10px', border: '1px solid #ddd',
+                                borderRadius: '4px', fontSize: '14px', fontFamily: 'Arial, sans-serif',
+                                minHeight: '60px', resize: 'vertical'
+                            }}
+                        />
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                        <button
+                            onClick={() => {
+                                setShowRejectModal(false);
+                                setSelectedRequest(null);
+                                setRejectionReason('');
+                            }}
+                            disabled={submitting}
+                            style={{
+                                padding: '10px 20px', backgroundColor: '#ccc',
+                                color: '#333', border: 'none', borderRadius: '4px', cursor: 'pointer'
+                            }}
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleRejectSubmit}
+                            disabled={submitting}
+                            style={{
+                                padding: '10px 20px', backgroundColor: '#dc3545',
+                                color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer'
+                            }}
+                        >
+                            {submitting ? 'Rejecting...' : 'Reject Request'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
 
     if (loading) {
         return (
@@ -53,6 +181,8 @@ const AdminRefundRequests = () => {
                 <h2>Refund Requests</h2>
             </div>
 
+            {renderRejectModal()}
+
             <div className="recent-section">
                 {refundRequests.length === 0 ? (
                     <p style={{ color: '#666', textAlign: 'center', padding: '20px' }}>No refund requests found</p>
@@ -76,19 +206,37 @@ const AdminRefundRequests = () => {
                                     <td style={{ padding: '12px', color: '#333' }}>#{request.id}</td>
                                     <td style={{ padding: '12px', color: '#333' }}>{request.fname} {request.lname}</td>
                                     <td style={{ padding: '12px', color: '#333' }}>{request.order_number}</td>
-                                    <td style={{ padding: '12px', color: '#333' }}>₱{request.amount.toLocaleString()}</td>
+                                    <td style={{ padding: '12px', color: '#333' }}>₱{parseFloat(request.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                     <td style={{ padding: '12px', color: '#666' }}>{request.reason}</td>
                                     <td style={{ padding: '12px' }}>
                                         <span className={`status-pill status-${request.status.toLowerCase()}`}>
-                                            {request.status}
+                                            {request.status?.charAt(0).toUpperCase() + request.status?.slice(1)}
                                         </span>
                                     </td>
                                     <td style={{ padding: '12px', color: '#666' }}>
                                         {new Date(request.created_at).toLocaleDateString()}
                                     </td>
                                     <td style={{ padding: '12px' }}>
-                                        <button style={{ marginRight: '8px', padding: '5px 10px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>Approve</button>
-                                        <button style={{ padding: '5px 10px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>Reject</button>
+                                        {request.status === 'pending' ? (
+                                            <>
+                                                <button
+                                                    onClick={() => handleApprove(request.id)}
+                                                    disabled={submitting}
+                                                    style={{ marginRight: '8px', padding: '5px 10px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
+                                                >
+                                                    Approve
+                                                </button>
+                                                <button
+                                                    onClick={() => handleRejectClick(request)}
+                                                    disabled={submitting}
+                                                    style={{ padding: '5px 10px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
+                                                >
+                                                    Reject
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <span style={{ color: '#666', fontSize: '12px' }}>-</span>
+                                        )}
                                     </td>
                                 </tr>
                             ))}

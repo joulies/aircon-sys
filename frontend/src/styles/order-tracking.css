@@ -484,6 +484,7 @@ hr {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 20px;
     background: #fff;
     padding: 30px;
     border-radius: 8px;
@@ -533,32 +534,50 @@ hr {
     color: #721c24;
 }
 
+.order-status-badge.status-refund_requested {
+    background: #cfe2ff;
+    color: #084298;
+}
+
 .order-header-buttons {
     display: flex;
+    flex-direction: row;
     gap: 10px;
 }
 
 .action-btn {
-    padding: 10px 20px;
+    padding: 8px 14px;
     border: none;
     border-radius: 6px;
     cursor: pointer;
     font-weight: 600;
-    font-size: 13px;
+    font-size: 12px;
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
     transition: all 0.3s ease;
+    white-space: nowrap;
+    min-width: 110px;
 }
 
-.action-btn:hover {
+.action-btn:hover:not(:disabled) {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.action-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
 .cancel-btn {
     background: #dc3545;
     color: #fff;
+}
+
+.cancel-btn:disabled {
+    background: #ccc;
 }
 
 .refund-btn {
@@ -794,18 +813,24 @@ hr {
 @media (max-width: 768px) {
     .order-header-section {
         flex-direction: column;
+        gap: 15px;
+    }
+
+    .order-header-info {
+        flex-direction: column;
         align-items: flex-start;
-        gap: 20px;
     }
 
     .order-header-buttons {
         width: 100%;
         flex-direction: column;
+        gap: 10px;
     }
 
     .action-btn {
         width: 100%;
         justify-content: center;
+        padding: 12px 15px;
     }
 
     .timeline {

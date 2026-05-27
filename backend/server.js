@@ -643,10 +643,13 @@ app.post("/appointments", authenticateToken, async (req, res) => {
   }
 
   try {
-    // Check if user already has an appointment at this date/time
+    // Check if user already has an appointment at this date/time (excluding cancelled/refunded orders)
     const userAppointmentCheck = await new Promise((resolve) => {
       db.query(
-        "SELECT id FROM appointments WHERE user_id = ? AND appointment_date = ? AND appointment_time = ?",
+        `SELECT a.id FROM appointments a
+         LEFT JOIN orders o ON a.order_id = o.id
+         WHERE a.user_id = ? AND a.appointment_date = ? AND a.appointment_time = ?
+           AND (a.order_id IS NULL OR o.status NOT IN ('cancelled', 'refund_requested'))`,
         [userId, appointment_date, appointment_time],
         (err, results) => {
           resolve(err ? false : (results && results.length > 0));
@@ -796,33 +799,42 @@ app.post("/appointments", authenticateToken, async (req, res) => {
   }
 });
 
-// GET appointments for user
+// GET appointments for user (excluding cancelled/refunded orders for rebooking)
 app.get("/appointments", authenticateToken, (req, res) => {
   const userId = req.userId;
-  db.query("SELECT * FROM appointments WHERE user_id = ? ORDER BY appointment_date DESC", [userId], (err, results) => {
-    if (err) {
-      console.error("Error fetching appointments:", err);
-      return res.json({ appointments: [] });
+  db.query(
+    `SELECT a.* FROM appointments a
+     LEFT JOIN orders o ON a.order_id = o.id
+     WHERE a.user_id = ?
+       AND (a.order_id IS NULL OR o.status NOT IN ('cancelled', 'refund_requested'))
+     ORDER BY a.appointment_date DESC`,
+    [userId],
+    (err, results) => {
+      if (err) {
+        console.error("Error fetching appointments:", err);
+        return res.json({ appointments: [] });
+      }
+      const appointments = results.map(a => ({
+        ...a,
+        appointment_date: formatPHDate(a.appointment_date),
+      }));
+      res.json({ appointments });
     }
-    // FIX: mysql2 returns DATE columns as UTC JS Date objects, causing a 1-day
-    // shift for PH users (UTC+8). formatPHDate corrects this at the source so
-    // the frontend always receives the correct YYYY-MM-DD string.
-    const appointments = results.map(a => ({
-      ...a,
-      appointment_date: formatPHDate(a.appointment_date),
-    }));
-    res.json({ appointments });
-  });
+  );
 });
 
-// CHECK IF USER HAS AN EXISTING UPCOMING APPOINTMENT
+// CHECK IF USER HAS AN EXISTING UPCOMING APPOINTMENT (excluding cancelled/refunded orders)
 app.get("/appointments/check-existing", authenticateToken, (req, res) => {
   const userId = req.userId;
   // Use Philippine Time (UTC+8) for today's date
   const phNow = new Date(Date.now() + (8 * 60 * 60 * 1000));
   const today = phNow.toISOString().split('T')[0];
   db.query(
-    "SELECT * FROM appointments WHERE user_id = ? AND appointment_date >= ? ORDER BY appointment_date ASC LIMIT 1",
+    `SELECT a.* FROM appointments a
+     LEFT JOIN orders o ON a.order_id = o.id
+     WHERE a.user_id = ? AND a.appointment_date >= ?
+       AND (a.order_id IS NULL OR o.status NOT IN ('cancelled', 'refund_requested'))
+     ORDER BY a.appointment_date ASC LIMIT 1`,
     [userId, today],
     (err, results) => {
       if (err) {
@@ -837,6 +849,65 @@ app.get("/appointments/check-existing", authenticateToken, (req, res) => {
   );
 });
 
+// GET APPOINTMENTS ASSIGNED TO EMPLOYEE
+app.get("/employee/appointments", authenticateToken, (req, res) => {
+  const employeeId = req.userId;
+  const { status } = req.query;
+
+  let query = `
+    SELECT
+      a.id, a.appointment_number, a.appointment_date, a.appointment_time,
+      a.completion_status, a.completed_at, a.created_at,
+      o.id as order_id, o.order_number, o.total_amount, o.installation_fee, o.downpayment_amount, o.balance_due, o.payment_method, o.payment_status, o.status as order_status,
+      u.fname, u.lname, u.email, u.contact
+    FROM appointments a
+    LEFT JOIN orders o ON a.order_id = o.id
+    LEFT JOIN user_signup u ON a.user_id = u.id
+    WHERE a.assigned_employee_id = ?
+  `;
+
+  let params = [employeeId];
+
+  if (status === 'completed') {
+    query += " AND a.completion_status = 'completed'";
+  } else if (status === 'upcoming') {
+    query += " AND a.completion_status = 'pending'";
+  }
+
+  query += " ORDER BY a.appointment_date DESC";
+
+  db.query(query, params, (err, results) => {
+    if (err) {
+      console.error("[EMPLOYEE APPOINTMENTS] Database error:", err);
+      return res.status(500).json({ success: false, message: "Database error: " + err.message });
+    }
+
+    const appointments = (results || []).map(a => ({
+      id: a.id,
+      appointment_number: a.appointment_number,
+      appointment_date: formatPHDate(a.appointment_date),
+      appointment_time: a.appointment_time,
+      completion_status: a.completion_status,
+      completed_at: a.completed_at,
+      created_at: a.created_at,
+      order_id: a.order_id,
+      order_number: a.order_number,
+      total_amount: a.total_amount,
+      installation_fee: a.installation_fee,
+      downpayment_amount: a.downpayment_amount,
+      balance_due: a.balance_due,
+      payment_method: a.payment_method,
+      payment_status: a.payment_status,
+      order_status: a.order_status,
+      customer_name: `${a.fname || ''} ${a.lname || ''}`.trim(),
+      customer_email: a.email,
+      customer_phone: a.contact
+    }));
+
+    res.json({ success: true, appointments });
+  });
+});
+
 // ASSIGN EMPLOYEE TO APPOINTMENT (ADMIN)
 app.put("/appointments/:id/assign", async (req, res) => {
   const appointmentId = req.params.id;
@@ -849,14 +920,55 @@ app.put("/appointments/:id/assign", async (req, res) => {
   try {
     // Get appointment details
     db.query(
-      "SELECT appointment_date, appointment_time FROM appointments WHERE id = ?",
+      "SELECT appointment_date, appointment_time, user_id FROM appointments WHERE id = ?",
       [appointmentId],
       async (err, appointments) => {
         if (err || !appointments || appointments.length === 0) {
           return res.status(404).json({ error: "Appointment not found" });
         }
 
-        const { appointment_date, appointment_time } = appointments[0];
+        const { appointment_date, appointment_time, user_id } = appointments[0];
+        console.log(`[ASSIGN EMPLOYEE] Appointment ${appointmentId}: Date=${appointment_date}, Time=${appointment_time}, User=${user_id}, AssigningEmployee=${assigned_to}`);
+
+        // Check if employee is already assigned to a different user at same date/time
+        db.query(
+          "SELECT id, user_id FROM appointments WHERE assigned_employee_id = ? AND appointment_date = ? AND appointment_time = ? AND user_id != ? AND id != ?",
+          [assigned_to, appointment_date, appointment_time, user_id, appointmentId],
+          async (err, conflictingAppointments) => {
+            if (err) {
+              console.error("Error checking for conflicts:", err);
+              return res.status(500).json({ error: "Failed to check for scheduling conflicts" });
+            }
+
+            if (conflictingAppointments && conflictingAppointments.length > 0) {
+              console.log(`[ASSIGN EMPLOYEE] CONFLICT DETECTED: Employee ${assigned_to} already assigned to user ${conflictingAppointments[0].user_id} at ${appointment_date} ${appointment_time}`);
+              return res.status(409).json({
+                error: "Employee is already assigned to another customer at this date and time",
+                conflicting_appointment_id: conflictingAppointments[0].id,
+                date: formatPHDate(appointment_date),
+                time: appointment_time,
+                suggestion: "Try assigning a different employee or selecting a different time"
+              });
+            }
+
+            console.log(`[ASSIGN EMPLOYEE] No conflicts found. Proceeding with assignment validation.`);        // Check employee daily appointment limit
+        try {
+          const currentCount = await appointmentAvailability.countAppointmentsOnDate(db, assigned_to, formatPHDate(appointment_date));
+          const maxAppointments = await appointmentAvailability.getMaxAppointmentsPerDay(db);
+
+          if (currentCount >= parseInt(maxAppointments)) {
+            return res.status(409).json({
+              error: "Employee has reached daily appointment limit",
+              current_count: currentCount,
+              max_allowed: parseInt(maxAppointments),
+              date: formatPHDate(appointment_date),
+              suggestion: "Try assigning a different employee or selecting a different date"
+            });
+          }
+        } catch (limitErr) {
+          console.error("Error checking daily limit:", limitErr);
+          return res.status(500).json({ error: "Failed to check appointment limit" });
+        }
 
         // Mark the slot as unavailable
         try {
@@ -875,12 +987,14 @@ app.put("/appointments/:id/assign", async (req, res) => {
               return res.status(500).json({ error: "Failed to assign employee" });
             }
 
-            res.json({ 
-              success: true, 
+            res.json({
+              success: true,
               message: "Employee assigned successfully",
               appointmentId: appointmentId,
               assigned_to: assigned_to
             });
+          }
+        );
           }
         );
       }
@@ -888,6 +1002,147 @@ app.put("/appointments/:id/assign", async (req, res) => {
   } catch (err) {
     console.error("Error in assign endpoint:", err);
     return res.status(500).json({ error: "Failed to process assignment" });
+  }
+});
+
+// GET UNAVAILABLE EMPLOYEES FOR APPOINTMENT (ADMIN)
+app.get("/appointments/:id/unavailable-employees", (req, res) => {
+  const appointmentId = req.params.id;
+
+  try {
+    db.query(
+      "SELECT appointment_date, appointment_time, user_id FROM appointments WHERE id = ?",
+      [appointmentId],
+      (err, appointments) => {
+        if (err || !appointments || appointments.length === 0) {
+          console.log(`[UNAVAILABLE] Appointment ${appointmentId} not found`);
+          return res.status(404).json({ error: "Appointment not found" });
+        }
+
+        const { appointment_date, appointment_time, user_id } = appointments[0];
+        console.log(`[UNAVAILABLE] Checking for conflicts: Appointment ${appointmentId}, Date=${appointment_date}, Time=${appointment_time}, User=${user_id}`);
+
+        db.query(
+          "SELECT DISTINCT assigned_employee_id FROM appointments WHERE appointment_date = ? AND appointment_time = ? AND user_id != ? AND assigned_employee_id IS NOT NULL",
+          [appointment_date, appointment_time, user_id],
+          (err, unavailableEmployees) => {
+            if (err) {
+              console.error("Error fetching unavailable employees:", err);
+              return res.status(500).json({ error: "Failed to fetch unavailable employees" });
+            }
+
+            const unavailableIds = unavailableEmployees.map(row => row.assigned_employee_id);
+            console.log(`[UNAVAILABLE] Found unavailable employees for appointment ${appointmentId}:`, unavailableIds);
+            res.json({ unavailable_employee_ids: unavailableIds });
+          }
+        );
+      }
+    );
+  } catch (err) {
+    console.error("Error in unavailable-employees endpoint:", err);
+    return res.status(500).json({ error: "Failed to process request" });
+  }
+});
+
+// MARK APPOINTMENT AS COMPLETED (EMPLOYEE)
+app.put("/appointments/:id/complete", authenticateToken, (req, res) => {
+  const appointmentId = req.params.id;
+  const employeeId = req.userId;
+
+  try {
+    // Check if appointment exists and is assigned to this employee
+    db.query(
+      "SELECT a.id, a.completion_status, a.assigned_employee_id, a.appointment_date, a.appointment_time, a.order_id, a.user_id FROM appointments a WHERE a.id = ?",
+      [appointmentId],
+      (err, appointments) => {
+        if (err) {
+          console.error("Error fetching appointment:", err);
+          return res.status(500).json({ success: false, message: "Database error" });
+        }
+
+        if (!appointments || appointments.length === 0) {
+          return res.status(404).json({ success: false, message: "Appointment not found" });
+        }
+
+        const appointment = appointments[0];
+
+        // Verify employee is assigned to this appointment
+        if (appointment.assigned_employee_id !== employeeId) {
+          return res.status(403).json({ success: false, message: "You are not assigned to this appointment" });
+        }
+
+        // Check if already completed
+        if (appointment.completion_status === 'completed') {
+          return res.status(400).json({ success: false, message: "Appointment already marked as completed" });
+        }
+
+        // Check if appointment time has arrived
+        const appointmentDateTime = new Date(appointment.appointment_date);
+        const [hours, minutes] = appointment.appointment_time.split(':');
+        appointmentDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+
+        const now = new Date();
+        if (now < appointmentDateTime) {
+          const timeUntilAppointment = Math.ceil((appointmentDateTime - now) / 1000 / 60);
+          return res.status(400).json({
+            success: false,
+            message: `Cannot mark complete yet. Appointment starts in ${timeUntilAppointment} minute(s).`,
+            appointment_time: appointmentDateTime,
+            current_time: now,
+            minutes_remaining: timeUntilAppointment
+          });
+        }
+
+        // Mark as completed
+        db.query(
+          "UPDATE appointments SET completion_status = 'completed', completed_at = ? WHERE id = ?",
+          [now, appointmentId],
+          (updateErr) => {
+            if (updateErr) {
+              console.error("Error marking appointment as completed:", updateErr);
+              return res.status(500).json({ success: false, message: "Failed to mark as completed" });
+            }
+
+            // Update order status - find order by user_id and appointment date/time, or use order_id if available
+            let orderQuery;
+            let orderParams;
+
+            if (appointment.order_id) {
+              // If appointment has order_id, use it directly
+              orderQuery = "UPDATE orders SET status = 'Completed', payment_status = 'Paid' WHERE id = ?";
+              orderParams = [appointment.order_id];
+            } else {
+              // Otherwise, find the most recent order for this user
+              orderQuery = "UPDATE orders SET status = 'Completed', payment_status = 'Paid' WHERE user_id = ? ORDER BY created_at DESC LIMIT 1";
+              orderParams = [appointment.user_id];
+            }
+
+            db.query(orderQuery, orderParams, (orderErr, result) => {
+              if (orderErr) {
+                console.error("Error updating order status:", orderErr);
+              } else {
+                if (result.affectedRows > 0) {
+                  console.log(`[APPOINTMENT COMPLETE] Order updated to Completed/Paid for user ${appointment.user_id}`);
+                } else {
+                  console.warn(`[APPOINTMENT COMPLETE] No order found for user ${appointment.user_id}`);
+                }
+              }
+            });
+
+            res.json({
+              success: true,
+              message: "Appointment marked as completed",
+              appointment_id: appointmentId,
+              order_id: appointment.order_id,
+              completed_at: now
+            });
+          }
+        );
+      }
+    );
+  } catch (err) {
+    console.error("Error in complete endpoint:", err);
+    return res.status(500).json({ success: false, message: "Failed to process request" });
   }
 });
 
@@ -1338,6 +1593,28 @@ app.get("/orders/:id", authenticateToken, (req, res) => {
   );
 });
 
+// GET refund request status for an order
+app.get("/orders/:id/refund-status", authenticateToken, (req, res) => {
+  const { id } = req.params;
+  const userId = req.userId;
+
+  db.query(
+    "SELECT id, status, reason, amount, created_at FROM refund_requests WHERE order_id = ? AND user_id = ? LIMIT 1",
+    [id, userId],
+    (err, refunds) => {
+      if (err) {
+        return res.status(500).json({ success: false, message: "Failed to fetch refund status" });
+      }
+
+      if (refunds && refunds.length > 0) {
+        res.json(refunds[0]);
+      } else {
+        res.status(404).json({ success: false, message: "No refund request found" });
+      }
+    }
+  );
+});
+
 // CANCEL order
 app.post("/orders/:id/cancel", authenticateToken, (req, res) => {
   const { id } = req.params;
@@ -1351,46 +1628,82 @@ app.post("/orders/:id/cancel", authenticateToken, (req, res) => {
 
     const order = orders[0];
 
-    // Only pending orders can be cancelled
-    if (order.status !== 'pending') {
-      return res.status(400).json({ success: false, message: "Only pending orders can be cancelled" });
+    // Check if order is already cancelled
+    if (order.status === 'cancelled') {
+      return res.status(400).json({ success: false, message: "Order is already cancelled" });
     }
 
-    // Get order items to restore stock
-    db.query("SELECT * FROM order_items WHERE order_id = ?", [id], (err, items) => {
-      if (err) {
-        return res.status(500).json({ success: false, message: "Failed to fetch order items" });
+    // Check if order is completed
+    if (order.status === 'Completed' || order.status === 'completed') {
+      return res.status(400).json({ success: false, message: "Cannot cancel completed orders" });
+    }
+
+    // For PayMaya/GCash, require payment confirmation by admin
+    if (order.payment_method !== 'cod') {
+      if (order.payment_status !== 'Half Paid' && order.payment_status !== 'fully_paid') {
+        return res.status(400).json({
+          success: false,
+          message: "Payment must be confirmed by admin before cancellation"
+        });
       }
+    }
 
-      // Restore stock for each item
-      items.forEach(item => {
-        db.query(
-          "UPDATE products SET num_stocks = num_stocks + ? WHERE id = ?",
-          [item.quantity, item.product_id],
-          (err) => {
-            if (err) console.error("Error restoring stock:", err);
+    // Get appointment date to check if cancellation is allowed
+    db.query(
+      "SELECT appointment_date FROM appointments WHERE user_id = ? ORDER BY created_at DESC LIMIT 1",
+      [userId],
+      (err, appointments) => {
+        if (!err && appointments && appointments.length > 0) {
+          const appointmentDate = new Date(appointments[0].appointment_date);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+
+          // Check if appointment date is in the past or today
+          if (appointmentDate < today) {
+            return res.status(400).json({
+              success: false,
+              message: "Cannot cancel order. Appointment date has already passed."
+            });
           }
-        );
-      });
-
-      // Update order status
-      db.query("UPDATE orders SET status = ? WHERE id = ?", ['cancelled', id], (err) => {
-        if (err) {
-          return res.status(500).json({ success: false, message: "Failed to cancel order" });
         }
 
-        // Add notification
-        db.query(
-          "INSERT INTO notifications (user_id, message, notification_type) VALUES (?, ?, ?)",
-          [userId, 'Order cancelled successfully. Amount refunded.', 'cancellation'],
-          (err) => {
-            if (err) console.error("Error creating notification:", err);
+        // Get order items to restore stock
+        db.query("SELECT * FROM order_items WHERE order_id = ?", [id], (err, items) => {
+          if (err) {
+            return res.status(500).json({ success: false, message: "Failed to fetch order items" });
           }
-        );
 
-        res.json({ success: true, message: "Order cancelled and stock restored" });
-      });
-    });
+          // Restore stock for each item
+          items.forEach(item => {
+            db.query(
+              "UPDATE products SET num_stocks = num_stocks + ? WHERE id = ?",
+              [item.quantity, item.product_id],
+              (err) => {
+                if (err) console.error("Error restoring stock:", err);
+              }
+            );
+          });
+
+          // Update order status
+          db.query("UPDATE orders SET status = ? WHERE id = ?", ['cancelled', id], (err) => {
+            if (err) {
+              return res.status(500).json({ success: false, message: "Failed to cancel order" });
+            }
+
+            // Add notification
+            db.query(
+              "INSERT INTO notifications (user_id, message, notification_type) VALUES (?, ?, ?)",
+              [userId, 'Order cancelled successfully. Amount refunded.', 'cancellation'],
+              (err) => {
+                if (err) console.error("Error creating notification:", err);
+              }
+            );
+
+            res.json({ success: true, message: "Order cancelled and stock restored" });
+          });
+        });
+      }
+    );
   });
 });
 
@@ -1413,33 +1726,50 @@ app.post("/orders/:id/refund", authenticateToken, (req, res) => {
       return res.status(400).json({ success: false, message: "Refunds not available for COD orders" });
     }
 
-    // Only pending payment orders
-    if (order.payment_status !== 'completed') {
-      return res.status(400).json({ success: false, message: "Cannot refund this order" });
+    // Only allow refunds if order is cancelled
+    if (order.status !== 'cancelled') {
+      return res.status(400).json({ success: false, message: "Only cancelled orders can request refunds" });
     }
 
-    // Update order status to refund_requested
+    // Only allow refunds if payment was made (Half Paid or fully_paid status)
+    if (order.payment_status === 'Unpaid' || order.payment_status === 'Pending Confirmation') {
+      return res.status(400).json({ success: false, message: "Cannot refund orders without payment" });
+    }
+
+    // Insert into refund_requests table
     db.query(
-      "UPDATE orders SET status = ? WHERE id = ?",
-      ['refund_requested', id],
+      "INSERT INTO refund_requests (order_id, user_id, reason, status, amount, payment_method) VALUES (?, ?, ?, ?, ?, ?)",
+      [id, userId, reason || 'No reason provided', 'pending', order.total_amount, order.payment_method],
       (err) => {
         if (err) {
+          console.error("Error creating refund request:", err);
           return res.status(500).json({ success: false, message: "Failed to process refund request" });
         }
 
-        // Add notification
+        // Update order status to refund_requested
         db.query(
-          "INSERT INTO notifications (user_id, message, notification_type) VALUES (?, ?, ?)",
-          [userId, `Refund request submitted. We'll process it within 3-5 business days.`, 'refund_request'],
+          "UPDATE orders SET status = ? WHERE id = ?",
+          ['refund_requested', id],
           (err) => {
-            if (err) console.error("Error creating notification:", err);
+            if (err) {
+              return res.status(500).json({ success: false, message: "Failed to process refund request" });
+            }
+
+            // Add notification
+            db.query(
+              "INSERT INTO notifications (user_id, message, notification_type) VALUES (?, ?, ?)",
+              [userId, `Refund request submitted. We'll process it within 3-5 business days.`, 'refund_request'],
+              (err) => {
+                if (err) console.error("Error creating notification:", err);
+              }
+            );
+
+            res.json({
+              success: true,
+              message: "Refund request submitted successfully. You'll be refunded within 3-5 business days."
+            });
           }
         );
-
-        res.json({
-          success: true,
-          message: "Refund request submitted successfully. You'll be refunded within 3-5 business days."
-        });
       }
     );
   });
@@ -1696,6 +2026,7 @@ app.get("/admin/employees", (req, res) => {
 });
 
 // ASSIGN employee to order (admin)
+// ASSIGN employee to order (admin)
 app.post("/admin/orders/:id/assign-employee", (req, res) => {
   const { id } = req.params;
   const { employee_id } = req.body;
@@ -1711,7 +2042,10 @@ app.post("/admin/orders/:id/assign-employee", (req, res) => {
 
     const order = orders[0];
 
-    // Check if order is ready for assignment
+    if (order.status === 'cancelled') {
+      return res.status(400).json({ success: false, message: "Cannot assign employee to cancelled orders" });
+    }
+
     const isReadyForAssignment = order.status === 'Paid - Awaiting Assignment' ||
                                   (order.payment_method === 'cod' && order.status === 'Pending');
 
@@ -1719,100 +2053,139 @@ app.post("/admin/orders/:id/assign-employee", (req, res) => {
       return res.status(400).json({ success: false, message: "Order is not ready for employee assignment" });
     }
 
-    // Update order status
     db.query(
-      "UPDATE orders SET status = ? WHERE id = ?",
-      ['Ready for Installation', id],
-      (err) => {
+      "SELECT id, appointment_number, appointment_date, appointment_time, user_id FROM appointments WHERE order_id = ?",
+      [id],
+      async (err, appointments) => {
         if (err) {
-          return res.status(500).json({ success: false, message: "Failed to assign employee" });
+          return res.status(500).json({ success: false, message: "Failed to fetch appointment details" });
         }
 
-        // Check if appointment already exists for this order
-        db.query(
-          "SELECT id, appointment_number FROM appointments WHERE order_id = ?",
-          [id],
-          (err, appointments) => {
-            if (appointments && appointments.length > 0) {
-              // Update existing appointment with assigned employee
-              const appointmentId = appointments[0].id;
-              const appointmentNumber = appointments[0].appointment_number;
+        if (appointments && appointments.length > 0) {
+          const appointment = appointments[0];
 
-              db.query(
-                "UPDATE appointments SET assigned_employee_id = ? WHERE id = ?",
-                [employee_id, appointmentId],
-                (err) => {
-                  if (err) {
-                    return res.status(500).json({ success: false, message: "Failed to assign employee to appointment" });
-                  }
+          db.query(
+            "SELECT id, user_id FROM appointments WHERE assigned_employee_id = ? AND appointment_date = ? AND appointment_time = ? AND user_id != ? AND id != ?",
+            [employee_id, appointment.appointment_date, appointment.appointment_time, appointment.user_id, appointment.id],
+            async (err, conflicts) => {
+              if (err) {
+                return res.status(500).json({ success: false, message: "Failed to check for scheduling conflicts" });
+              }
 
-                  // Add notification to user
-                  const notificationMessage = order.payment_method === 'cod'
-                    ? 'An employee has been assigned for your installation. Please prepare payment for the appointment date. You will receive the appointment details soon.'
-                    : 'An employee has been assigned for your installation. You will receive the appointment details soon.';
+              if (conflicts && conflicts.length > 0) {
+                return res.status(409).json({
+                  success: false,
+                  error: "Employee is already assigned to another customer at this time slot",
+                  date: formatPHDate(appointment.appointment_date),
+                  time: appointment.appointment_time,
+                  suggestion: "Try assigning a different employee or selecting a different time"
+                });
+              }
 
-                  db.query(
-                    "INSERT INTO notifications (user_id, message, notification_type) VALUES (?, ?, ?)",
-                    [order.user_id, notificationMessage, 'info'],
-                    (err) => {
-                      if (err) console.error("Error creating notification:", err);
-                    }
-                  );
+              try {
+                const currentCount = await appointmentAvailability.countAppointmentsOnDate(db, employee_id, formatPHDate(appointment.appointment_date));
+                const maxAppointments = await appointmentAvailability.getMaxAppointmentsPerDay(db);
 
-                  res.json({
-                    success: true,
-                    message: "Employee assigned successfully",
-                    orderId: id,
-                    appointmentNumber: appointmentNumber,
-                    status: 'Ready for Installation'
+                if (currentCount >= parseInt(maxAppointments)) {
+                  return res.status(409).json({
+                    success: false,
+                    error: `Employee has reached their daily appointment limit (${currentCount}/${maxAppointments}) for ${formatPHDate(appointment.appointment_date)}`,
+                    current_count: currentCount,
+                    max_allowed: parseInt(maxAppointments),
+                    date: formatPHDate(appointment.appointment_date),
+                    suggestion: "Try assigning a different employee or selecting a different date"
                   });
                 }
-              );
-            } else {
-              // Create new appointment record with employee
-              const appointmentNumber = generateAppointmentNumber();
+
+                proceedWithAssignment();
+              } catch (err) {
+                console.error("Error checking daily limit:", err);
+                return res.status(500).json({ success: false, message: "Failed to check appointment limit" });
+              }
+            }
+          );
+        } else {
+          proceedWithAssignment();
+        }
+
+        function proceedWithAssignment() {
+          db.query(
+            "UPDATE orders SET status = ? WHERE id = ?",
+            ['Ready for Installation', id],
+            (err) => {
+              if (err) {
+                return res.status(500).json({ success: false, message: "Failed to assign employee" });
+              }
+
               db.query(
-                "INSERT INTO appointments (appointment_number, order_id, user_id, appointment_date, appointment_time, assigned_employee_id) VALUES (?, ?, ?, ?, ?, ?)",
-                [appointmentNumber, id, order.user_id, new Date(), '00:00', employee_id],
-                (err) => {
-                  if (err) {
-                    return res.status(500).json({ success: false, message: "Failed to create appointment" });
+                "SELECT id, appointment_number FROM appointments WHERE order_id = ?",
+                [id],
+                (err, appointments) => {
+                  if (appointments && appointments.length > 0) {
+                    const appointmentId = appointments[0].id;
+                    const appointmentNumber = appointments[0].appointment_number;
+
+                    db.query(
+                      "UPDATE appointments SET assigned_employee_id = ? WHERE id = ?",
+                      [employee_id, appointmentId],
+                      (err) => {
+                        if (err) {
+                          return res.status(500).json({ success: false, message: "Failed to assign employee to appointment" });
+                        }
+
+                        db.query(
+                          "INSERT INTO notifications (user_id, message, notification_type) VALUES (?, ?, ?)",
+                          [order.user_id, 'An employee has been assigned for your installation.', 'info'],
+                          () => {}
+                        );
+
+                        res.json({
+                          success: true,
+                          message: "Employee assigned successfully",
+                          orderId: id,
+                          appointmentNumber: appointmentNumber,
+                          status: 'Ready for Installation'
+                        });
+                      }
+                    );
+                  } else {
+                    const appointmentNumber = generateAppointmentNumber();
+                    db.query(
+                      "INSERT INTO appointments (appointment_number, order_id, user_id, appointment_date, appointment_time, assigned_employee_id) VALUES (?, ?, ?, ?, ?, ?)",
+                      [appointmentNumber, id, order.user_id, new Date(), '00:00', employee_id],
+                      (err) => {
+                        if (err) {
+                          return res.status(500).json({ success: false, message: "Failed to create appointment" });
+                        }
+
+                        db.query(
+                          "INSERT INTO notifications (user_id, message, notification_type) VALUES (?, ?, ?)",
+                          [order.user_id, 'An employee has been assigned for your installation.', 'info'],
+                          () => {}
+                        );
+
+                        res.json({
+                          success: true,
+                          message: "Employee assigned successfully",
+                          orderId: id,
+                          appointmentNumber: appointmentNumber,
+                          status: 'Ready for Installation'
+                        });
+                      }
+                    );
                   }
-
-                  // Add notification to user
-                  const notificationMessage = order.payment_method === 'cod'
-                    ? 'An employee has been assigned for your installation. Please prepare payment for the appointment date. You will receive the appointment details soon.'
-                    : 'An employee has been assigned for your installation. You will receive the appointment details soon.';
-
-                  db.query(
-                    "INSERT INTO notifications (user_id, message, notification_type) VALUES (?, ?, ?)",
-                    [order.user_id, notificationMessage, 'info'],
-                    (err) => {
-                      if (err) console.error("Error creating notification:", err);
-                    }
-                  );
-
-                  res.json({
-                    success: true,
-                    message: "Employee assigned successfully",
-                    orderId: id,
-                    appointmentNumber: appointmentNumber,
-                    status: 'Ready for Installation'
-                  });
                 }
               );
             }
-          }
-        );
+          );
+        }
       }
     );
   });
 });
-
-// GET all appointments (admin)
 app.get("/admin/appointments", (req, res) => {
   db.query(
-    `SELECT a.id, a.appointment_number, a.user_id, a.appointment_date, a.appointment_time, a.created_at, a.assigned_employee_id,
+    `SELECT a.id, a.appointment_number, a.user_id, a.appointment_date, a.appointment_time, a.created_at, a.assigned_employee_id, a.completion_status, a.completed_at,
             u.fname, u.lname, u.email, u.contact,
             e.fname AS technician_fname, e.lname AS technician_lname, e.contact AS technician_contact
      FROM appointments a
@@ -1866,7 +2239,7 @@ app.get("/admin/low-stock-products", (req, res) => {
 // GET pending refund requests (admin)
 app.get("/admin/refund-requests", (req, res) => {
   db.query(
-    `SELECT r.id, r.order_id, r.amount, r.reason, r.status, r.created_at, u.fname, u.lname, o.order_number
+    `SELECT r.id, r.order_id, r.amount, r.reason, r.status, r.created_at, r.user_id, u.fname, u.lname, o.order_number
      FROM refund_requests r
      JOIN user_signup u ON r.user_id = u.id
      LEFT JOIN orders o ON r.order_id = o.id
@@ -1879,6 +2252,81 @@ app.get("/admin/refund-requests", (req, res) => {
       res.json(results);
     }
   );
+});
+
+// APPROVE refund request (admin)
+app.put("/admin/refund-requests/:id/approve", (req, res) => {
+  const { id } = req.params;
+
+  db.query("SELECT * FROM refund_requests WHERE id = ?", [id], (err, requests) => {
+    if (err || requests.length === 0) {
+      return res.status(404).json({ success: false, message: "Refund request not found" });
+    }
+
+    const refundRequest = requests[0];
+
+    // Update refund request status
+    db.query(
+      "UPDATE refund_requests SET status = ? WHERE id = ?",
+      ['approved', id],
+      (err) => {
+        if (err) {
+          return res.status(500).json({ success: false, message: "Failed to approve refund request" });
+        }
+
+        // Add notification to user
+        db.query(
+          "INSERT INTO notifications (user_id, message, notification_type) VALUES (?, ?, ?)",
+          [refundRequest.user_id, 'Your refund request has been approved. You will receive your refund within 3-5 business days.', 'refund_approved'],
+          (err) => {
+            if (err) console.error("Error creating notification:", err);
+          }
+        );
+
+        res.json({ success: true, message: "Refund request approved successfully" });
+      }
+    );
+  });
+});
+
+// REJECT refund request (admin)
+app.put("/admin/refund-requests/:id/reject", (req, res) => {
+  const { id } = req.params;
+  const { reason } = req.body;
+
+  db.query("SELECT * FROM refund_requests WHERE id = ?", [id], (err, requests) => {
+    if (err || requests.length === 0) {
+      return res.status(404).json({ success: false, message: "Refund request not found" });
+    }
+
+    const refundRequest = requests[0];
+
+    // Update refund request status
+    db.query(
+      "UPDATE refund_requests SET status = ? WHERE id = ?",
+      ['rejected', id],
+      (err) => {
+        if (err) {
+          return res.status(500).json({ success: false, message: "Failed to reject refund request" });
+        }
+
+        // Add notification to user
+        const message = reason
+          ? `Your refund request has been rejected. Reason: ${reason}`
+          : 'Your refund request has been rejected.';
+
+        db.query(
+          "INSERT INTO notifications (user_id, message, notification_type) VALUES (?, ?, ?)",
+          [refundRequest.user_id, message, 'refund_rejected'],
+          (err) => {
+            if (err) console.error("Error creating notification:", err);
+          }
+        );
+
+        res.json({ success: true, message: "Refund request rejected successfully" });
+      }
+    );
+  });
 });
 
 // GET order analytics (admin)

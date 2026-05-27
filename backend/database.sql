@@ -108,9 +108,12 @@ CREATE TABLE IF NOT EXISTS appointments (
   appointment_date DATE NOT NULL,
   appointment_time VARCHAR(10) NOT NULL,
   assigned_employee_id INT DEFAULT NULL,
+  completion_status ENUM('pending', 'completed') DEFAULT 'pending',
+  completed_at TIMESTAMP NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY unique_user_datetime (user_id, appointment_date, appointment_time),
-  FOREIGN KEY (user_id) REFERENCES user_signup(id) ON DELETE CASCADE
+  FOREIGN KEY (user_id) REFERENCES user_signup(id) ON DELETE CASCADE,
+  KEY idx_employee_date (assigned_employee_id, appointment_date)
 );
 
 -- ==========================================

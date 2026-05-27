@@ -7,25 +7,44 @@ const AdminAppointments = () => {
     const [error, setError] = useState(null);
     const [selectedAppointment, setSelectedAppointment] = useState(null);
     const [showModal, setShowModal] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
+
+    const fetchAppointments = async () => {
+        try {
+            setRefreshing(true);
+            const response = await fetch('http://localhost:5000/admin/appointments');
+            if (!response.ok) throw new Error('Failed to fetch appointments');
+            const data = await response.json();
+            setAppointments(data);
+        } catch (err) {
+            console.error('Error fetching appointments:', err);
+            setError(err.message);
+        } finally {
+            setRefreshing(false);
+        }
+    };
 
     useEffect(() => {
-        const fetchAppointments = async () => {
-            try {
-                setLoading(true);
-                const response = await fetch('http://localhost:5000/admin/appointments');
-                if (!response.ok) throw new Error('Failed to fetch appointments');
-                const data = await response.json();
-                setAppointments(data);
-            } catch (err) {
-                console.error('Error fetching appointments:', err);
-                setError(err.message);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchAppointments();
+        setLoading(true);
+        fetchAppointments().then(() => setLoading(false));
     }, []);
+
+    // Auto-refresh every 30 seconds
+    useEffect(() => {
+        const interval = setInterval(fetchAppointments, 30000);
+        return () => clearInterval(interval);
+    }, []);
+
+    const getStatusColor = (status) => {
+        if (status === 'completed') return '#28a745';
+        if (status === 'pending') return '#ffc107';
+        return '#6c757d';
+    };
+
+    const getStatusBadge = (status) => {
+        if (status === 'completed') return '✓ Completed';
+        return 'Pending';
+    };
 
     if (loading) {
         return (
@@ -51,8 +70,24 @@ const AdminAppointments = () => {
 
     return (
         <AdminLayout>
-            <div className="page-header">
+            <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h2>Appointments Management</h2>
+                <button
+                    onClick={fetchAppointments}
+                    disabled={refreshing}
+                    style={{
+                        padding: '8px 16px',
+                        backgroundColor: '#0066cc',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: refreshing ? 'not-allowed' : 'pointer',
+                        fontSize: '14px',
+                        opacity: refreshing ? 0.6 : 1
+                    }}
+                >
+                    {refreshing ? 'Refreshing...' : '🔄 Refresh'}
+                </button>
             </div>
 
             <div className="recent-section">
@@ -64,10 +99,10 @@ const AdminAppointments = () => {
                             <tr style={{ borderBottom: '2px solid #eee' }}>
                                 <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Appointment #</th>
                                 <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Customer</th>
-                                <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Email</th>
-                                <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Phone</th>
                                 <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Date</th>
                                 <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Time</th>
+                                <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Technician</th>
+                                <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Status</th>
                                 <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Actions</th>
                             </tr>
                         </thead>
@@ -76,14 +111,27 @@ const AdminAppointments = () => {
                                 <tr key={apt.id} style={{ borderBottom: '1px solid #eee' }}>
                                     <td style={{ padding: '12px', color: '#333', fontWeight: '600' }}>{apt.appointment_number}</td>
                                     <td style={{ padding: '12px', color: '#333' }}>{apt.fname} {apt.lname}</td>
-                                    <td style={{ padding: '12px', color: '#666' }}>{apt.email}</td>
-                                    <td style={{ padding: '12px', color: '#666' }}>{apt.contact}</td>
                                     <td style={{ padding: '12px', color: '#666' }}>
                                         {new Date(apt.appointment_date).toLocaleDateString()}
                                     </td>
                                     <td style={{ padding: '12px', color: '#666' }}>{apt.appointment_time}</td>
+                                    <td style={{ padding: '12px', color: '#666' }}>
+                                        {apt.technician_fname ? `${apt.technician_fname} ${apt.technician_lname}` : 'Not assigned'}
+                                    </td>
                                     <td style={{ padding: '12px' }}>
-                                        <button 
+                                        <span style={{
+                                            padding: '4px 8px',
+                                            borderRadius: '12px',
+                                            fontSize: '12px',
+                                            fontWeight: '600',
+                                            backgroundColor: getStatusColor(apt.completion_status) + '20',
+                                            color: getStatusColor(apt.completion_status)
+                                        }}>
+                                            {getStatusBadge(apt.completion_status)}
+                                        </span>
+                                    </td>
+                                    <td style={{ padding: '12px' }}>
+                                        <button
                                             onClick={() => {
                                                 setSelectedAppointment(apt);
                                                 setShowModal(true);
@@ -115,13 +163,13 @@ const AdminAppointments = () => {
                         padding: '30px',
                         borderRadius: '8px',
                         boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-                        maxWidth: '500px',
+                        maxWidth: '600px',
                         width: '90%',
                         maxHeight: '90vh',
                         overflowY: 'auto'
                     }}>
                         <h3 style={{ marginTop: 0, marginBottom: '20px', color: '#333' }}>Appointment Details</h3>
-                        
+
                         <div style={{ marginBottom: '15px' }}>
                             <label style={{ display: 'block', fontWeight: '600', color: '#666', marginBottom: '5px' }}>Appointment #:</label>
                             <p style={{ margin: 0, color: '#333' }}>{selectedAppointment.appointment_number}</p>
@@ -151,6 +199,29 @@ const AdminAppointments = () => {
                             <label style={{ display: 'block', fontWeight: '600', color: '#666', marginBottom: '5px' }}>Time:</label>
                             <p style={{ margin: 0, color: '#333' }}>{selectedAppointment.appointment_time}</p>
                         </div>
+
+                        <div style={{ marginBottom: '15px' }}>
+                            <label style={{ display: 'block', fontWeight: '600', color: '#666', marginBottom: '5px' }}>Status:</label>
+                            <span style={{
+                                padding: '6px 12px',
+                                borderRadius: '12px',
+                                fontSize: '14px',
+                                fontWeight: '600',
+                                backgroundColor: getStatusColor(selectedAppointment.completion_status) + '20',
+                                color: getStatusColor(selectedAppointment.completion_status)
+                            }}>
+                                {getStatusBadge(selectedAppointment.completion_status)}
+                            </span>
+                        </div>
+
+                        {selectedAppointment.completion_status === 'completed' && selectedAppointment.completed_at && (
+                            <div style={{ marginBottom: '15px' }}>
+                                <label style={{ display: 'block', fontWeight: '600', color: '#666', marginBottom: '5px' }}>Completed At:</label>
+                                <p style={{ margin: 0, color: '#333' }}>
+                                    {new Date(selectedAppointment.completed_at).toLocaleString()}
+                                </p>
+                            </div>
+                        )}
 
                         <div style={{ marginBottom: '15px', paddingTop: '15px', borderTop: '1px solid #eee' }}>
                             <label style={{ display: 'block', fontWeight: '600', color: '#666', marginBottom: '5px' }}>Assigned Technician:</label>
