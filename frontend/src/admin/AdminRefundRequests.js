@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { showAlert } from '../utils/alertDialog';
 import AdminLayout from './AdminLayout';
 
 const AdminRefundRequests = () => {
@@ -40,11 +41,11 @@ const AdminRefundRequests = () => {
             });
 
             if (!response.ok) throw new Error('Failed to approve refund request');
-            alert('Refund request approved successfully');
+            showAlert('Refund request approved successfully', 'Success');
             fetchRefundRequests();
         } catch (err) {
             console.error('Error:', err);
-            alert('Error approving refund request');
+            showAlert('Error approving refund request', 'Error');
         } finally {
             setSubmitting(false);
         }
@@ -58,7 +59,7 @@ const AdminRefundRequests = () => {
 
     const handleRejectSubmit = async () => {
         if (!rejectionReason.trim()) {
-            alert('Please provide a reason for rejection');
+            showAlert('Please provide a reason for rejection', 'Information');
             return;
         }
 
@@ -71,14 +72,14 @@ const AdminRefundRequests = () => {
             });
 
             if (!response.ok) throw new Error('Failed to reject refund request');
-            alert('Refund request rejected successfully');
+            showAlert('Refund request rejected successfully', 'Success');
             setShowRejectModal(false);
             setSelectedRequest(null);
             setRejectionReason('');
             fetchRefundRequests();
         } catch (err) {
             console.error('Error:', err);
-            alert('Error rejecting refund request');
+            showAlert('Error rejecting refund request', 'Error');
         } finally {
             setSubmitting(false);
         }

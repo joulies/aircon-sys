@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { getNotifications, deleteNotification, deleteAllNotifications } from '../services/api';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import { showAlert } from '../utils/alertDialog';
 import logo from '../logo.png';
 
 function Header({ userName = 'Guest' }) {
@@ -67,7 +68,7 @@ function Header({ userName = 'Guest' }) {
         await deleteAllNotifications();
         loadNotifications();
       } catch (error) {
-        alert('Failed to delete notifications');
+        showAlert('Failed to delete notifications', 'Error');
       }
     }
   };
@@ -84,7 +85,7 @@ function Header({ userName = 'Guest' }) {
 
   const handleDeleteSelected = async () => {
     if (selectedNotifications.size === 0) {
-      alert('Please select notifications to delete');
+      showAlert('Please select notifications to delete', 'Information');
       return;
     }
 
@@ -96,7 +97,7 @@ function Header({ userName = 'Guest' }) {
         setSelectedNotifications(new Set());
         loadNotifications();
       } catch (error) {
-        alert('Failed to delete selected notifications');
+        showAlert('Failed to delete selected notifications', 'Error');
       }
     }
   };

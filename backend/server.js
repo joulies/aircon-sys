@@ -2518,6 +2518,94 @@ app.post("/admin/add-employee", (req, res) => {
   );
 });
 
+// ==========================================
+// NOTIFICATION ENDPOINTS
+// ==========================================
+
+// Get all notifications for current user
+app.get("/notifications", authenticateToken, (req, res) => {
+  const userId = req.userId;
+
+  db.query(
+    "SELECT id, user_id, message, notification_type, is_read, created_at FROM notifications WHERE user_id = ? ORDER BY created_at DESC",
+    [userId],
+    (err, results) => {
+      if (err) {
+        console.error("Error fetching notifications:", err);
+        return res.status(500).json({ error: "Failed to fetch notifications" });
+      }
+
+      const unreadCount = results.filter(n => !n.is_read).length;
+
+      res.json({
+        success: true,
+        notifications: results,
+        unread_count: unreadCount
+      });
+    }
+  );
+});
+
+// Delete all notifications for current user (MUST come before /:id route)
+app.delete("/notifications/all", authenticateToken, (req, res) => {
+  const userId = req.userId;
+
+  db.query(
+    "DELETE FROM notifications WHERE user_id = ?",
+    [userId],
+    (err, result) => {
+      if (err) {
+        console.error("Error deleting all notifications:", err);
+        return res.status(500).json({ error: "Failed to delete notifications" });
+      }
+
+      res.json({ success: true, message: "All notifications deleted" });
+    }
+  );
+});
+
+// Delete a specific notification
+app.delete("/notifications/:id", authenticateToken, (req, res) => {
+  const notificationId = req.params.id;
+  const userId = req.userId;
+
+  db.query(
+    "DELETE FROM notifications WHERE id = ? AND user_id = ?",
+    [notificationId, userId],
+    (err, result) => {
+      if (err) {
+        console.error("Error deleting notification:", err);
+        return res.status(500).json({ error: "Failed to delete notification" });
+      }
+
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ error: "Notification not found" });
+      }
+
+      res.json({ success: true, message: "Notification deleted" });
+    }
+  );
+});
+
+// Test endpoint - create sample notification
+app.post("/notifications/test/create", authenticateToken, (req, res) => {
+  const userId = req.userId;
+  const message = req.body.message || "Test notification";
+
+  db.query(
+    "INSERT INTO notifications (user_id, message, notification_type) VALUES (?, ?, ?)",
+    [userId, message, 'test'],
+    (err, result) => {
+      if (err) {
+        console.error("Error creating test notification:", err);
+        return res.status(500).json({ error: "Failed to create notification" });
+      }
+
+      res.json({ success: true, message: "Test notification created", notificationId: result.insertId });
+    }
+  );
+});
+
 // Start server
 app.listen(5000, () => {
   console.log("✓ Backend server running on port 5000");

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import { showAlert } from '../utils/alertDialog';
 import '../styles/cart.css';
 
 function CartPage() {
@@ -67,7 +68,7 @@ function CartPage() {
     // Prevent updating beyond available stock
     if (newQuantity > maxStock) {
       console.warn(`[CartPage] Quantity ${newQuantity} exceeds max stock ${maxStock}`);
-      alert(`Cannot add more! Only ${maxStock} item(s) available in stock.`);
+      showAlert(`Cannot add more! Only ${maxStock} item(s) available in stock.`, 'Notice');
       return;
     }
 
@@ -90,11 +91,11 @@ function CartPage() {
         loadCart();
       } else {
         console.error(`[CartPage] Update failed:`, data.message);
-        alert(data.message || 'Failed to update quantity');
+        showAlert(data.message || 'Failed to update quantity', 'Error');
       }
     } catch (err) {
       console.error('[CartPage] Error updating quantity:', err);
-      alert('Error updating quantity: ' + err.message);
+      showAlert('Error updating quantity: ' + err.message, 'Error');
     }
   };
 
@@ -114,7 +115,7 @@ function CartPage() {
         .join(', ');
 
       console.error('[CartPage] Out of stock items found:', outOfStockItems);
-      alert(`Cannot proceed to checkout. The following items are out of stock:\n\n${itemList}`);
+      showAlert(`Cannot proceed to checkout. The following items are out of stock:\n\n${itemList}`, 'Error');
       return false;
     }
 
@@ -128,7 +129,7 @@ function CartPage() {
     // STRICT CHECK 1: Cart not empty
     if (!cartItems || cartItems.length === 0) {
       console.error('[CartPage] BLOCKED - Cart is empty');
-      alert('Your cart is empty. Please add items before checking out.');
+      showAlert('Your cart is empty. Please add items before checking out.', 'Information');
       e?.preventDefault();
       return;
     }
@@ -278,7 +279,7 @@ function CartPage() {
                   e.preventDefault();
                   e.stopPropagation();
                   console.error('[CartPage] Checkout blocked - items out of stock');
-                  alert('Cannot proceed. Please remove out of stock items.');
+                  showAlert('Cannot proceed. Please remove out of stock items.', 'Error');
                   return false;
                 }
                 handleProceedToCheckout(e);

@@ -4,6 +4,7 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import { showAlert } from '../utils/alertDialog';
 import '../styles/product.css';
 
 function ProductDetailsPage() {
@@ -45,7 +46,7 @@ function ProductDetailsPage() {
     if (quantity > product.num_stocks) {
       console.warn(`[ProductDetails] Quantity ${quantity} exceeds stock ${product.num_stocks}`);
       if (showAlert) {
-        alert(`Only ${product.num_stocks} item(s) available in stock`);
+        showAlert(`Only ${product.num_stocks} item(s) available in stock`, 'Notice');
       }
       return false;
     }
@@ -70,7 +71,7 @@ function ProductDetailsPage() {
 
       if (response.ok) {
         if (showAlert) {
-          alert('Added to cart!');
+          showAlert('Added to cart!', 'Success');
         }
         refreshCartCount();
         setQuantity(1);
@@ -79,14 +80,14 @@ function ProductDetailsPage() {
         const errorMsg = data.message || 'Failed to add to cart';
         console.error(`[ProductDetails] Error:`, errorMsg);
         if (showAlert) {
-          alert(errorMsg);
+          showAlert(errorMsg, 'Error');
         }
         return false;
       }
     } catch (err) {
       console.error('[ProductDetails] Exception:', err);
       if (showAlert) {
-        alert('Error adding to cart: ' + err.message);
+        showAlert('Error adding to cart: ' + err.message, 'Error');
       }
       return false;
     }
@@ -103,7 +104,7 @@ function ProductDetailsPage() {
     if (success) {
       navigate('/appointment');
     } else {
-      alert('Failed to add item to cart. Please try again.');
+      showAlert('Failed to add item to cart. Please try again.', 'Error');
     }
   };
 

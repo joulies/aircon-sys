@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { showAlert } from '../utils/alertDialog';
 
 const EmployeeAssignedAppointments = () => {
     const [appointments, setAppointments] = useState([]);
@@ -120,11 +121,11 @@ const EmployeeAssignedAppointments = () => {
                 throw new Error(errorData.message || 'Failed to mark appointment as completed');
             }
 
-            alert('Appointment marked as completed successfully');
+            showAlert('Appointment marked as completed successfully', 'Success');
             fetchAppointments();
         } catch (err) {
             console.error('Error:', err);
-            alert(`Error: ${err.message}`);
+            showAlert(`Error: ${err.message}`, 'Error');
         } finally {
             setSubmitting(false);
         }

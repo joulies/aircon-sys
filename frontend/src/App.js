@@ -3,6 +3,8 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import DialogContainer from './components/DialogContainer';
+import ToastNotification from './components/ToastNotification';
 import AdminRoute from './components/AdminRoute';
 import EmployeeRoute from './components/EmployeeRoute';
 import HomePage from './pages/HomePage';
@@ -35,6 +37,8 @@ function App() {
   return (
     <AuthProvider>
       <CartProvider>
+        <DialogContainer />
+        <ToastNotification />
         <Router>
           <Routes>
             <Route path="/" element={<HomePage />} />

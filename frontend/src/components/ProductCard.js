@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { addToCart } from '../services/api';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import { showAlert } from '../utils/alertDialog';
 
 function ProductCard({ product, onCartUpdate }) {
   const navigate = useNavigate();
@@ -39,11 +40,11 @@ function ProductCard({ product, onCartUpdate }) {
         // Show backend error message
         const errorMsg = response.message || 'Failed to add to cart';
         console.error(`[ProductCard] Error:`, errorMsg);
-        alert(errorMsg);
+        showAlert(errorMsg, 'Error');
       }
     } catch (error) {
       console.error('[ProductCard] Exception:', error);
-      alert('Error adding to cart: ' + error.message);
+      showAlert('Error adding to cart: ' + error.message, 'Error');
     } finally {
       setIsLoading(false);
     }

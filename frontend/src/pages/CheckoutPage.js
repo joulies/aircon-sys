@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import { showAlert } from '../utils/alertDialog';
 import '../styles/checkout.css';
 
 // Barangay data for each city in Cavite
@@ -99,7 +100,7 @@ function CheckoutPage() {
     // Read pending appointment — if missing, redirect back to appointment page
     const raw = sessionStorage.getItem('pendingAppointment');
     if (!raw) {
-      alert('Please select an appointment date and time first.');
+      showAlert('Please select an appointment date and time first.', 'Information');
       navigate('/appointment');
       return;
     }
@@ -185,12 +186,12 @@ function CheckoutPage() {
     e.preventDefault();
 
     if (!formData.room_size || !formData.capacity || !formData.house) {
-      alert('Please fill in all required fields');
+      showAlert('Please fill in all required fields', 'Information');
       return;
     }
 
     if (!pendingAppointment) {
-      alert('Appointment selection missing. Please go back and select a date and time.');
+      showAlert('Appointment selection missing. Please go back and select a date and time.', 'Information');
       navigate('/appointment');
       return;
     }
@@ -226,15 +227,15 @@ if (!token) {
       if (response.ok) {
         // Clear the pending appointment now that it's been saved
         sessionStorage.removeItem('pendingAppointment');
-        alert('Order placed successfully!');
+        showAlert('Order placed successfully!', 'Success');
         navigate('/purchase-history');
       } else {
         const data = await response.json();
-        alert(data.message || 'Failed to place order');
+        showAlert(data.message || 'Failed to place order', 'Error');
       }
     } catch (err) {
       console.error('Error submitting checkout:', err);
-      alert('Error placing order');
+      showAlert('Error placing order', 'Error');
     }
   };
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import { showAlert } from '../utils/alertDialog';
 import '../styles/order-tracking.css';
 
 function OrderTrackingPage() {
@@ -128,17 +129,17 @@ function OrderTrackingPage() {
     if (!canCancelOrder()) {
       if (refundRequest) {
         const status = refundRequest.status?.charAt(0).toUpperCase() + refundRequest.status?.slice(1);
-        alert(`Cannot cancel order. Your refund request is currently ${status.toLowerCase()}.`);
+        showAlert(`Cannot cancel order. Your refund request is currently ${status.toLowerCase()}.`, 'Information');
       } else if (order.status?.toLowerCase() === 'completed') {
-        alert('Cannot cancel this order. The installation has been completed.');
+        showAlert('Cannot cancel this order. The installation has been completed.', 'Information');
       } else if (order.status?.toLowerCase() === 'cancelled') {
-        alert('This order has already been cancelled.');
+        showAlert('This order has already been cancelled.', 'Information');
       } else if (order.payment_method?.toLowerCase() !== 'cod' &&
           (order.payment_status?.toLowerCase() === 'pending confirmation' ||
            order.payment_status?.toLowerCase() === 'unpaid')) {
-        alert('Your payment must be confirmed by our admin team before you can cancel this order.');
+        showAlert('Your payment must be confirmed by our admin team before you can cancel this order.', 'Information');
       } else {
-        alert('Cannot cancel this order. The appointment date has passed.');
+        showAlert('Cannot cancel this order. The appointment date has passed.', 'Information');
       }
       return;
     }
@@ -155,21 +156,21 @@ function OrderTrackingPage() {
       });
 
       if (response.ok) {
-        alert('Order cancelled successfully');
+        showAlert('Order cancelled successfully', 'Success');
         loadOrderDetails();
       } else {
         const data = await response.json();
-        alert(data.message || 'Failed to cancel order');
+        showAlert(data.message || 'Failed to cancel order', 'Error');
       }
     } catch (err) {
       console.error('Error cancelling order:', err);
-      alert('Error cancelling order');
+      showAlert('Error cancelling order', 'Error');
     }
   };
 
   const handleRequestRefund = async () => {
     if (!refundReason.trim()) {
-      alert('Please provide a reason for the refund request');
+      showAlert('Please provide a reason for the refund request', 'Information');
       return;
     }
 
@@ -186,17 +187,17 @@ function OrderTrackingPage() {
       });
 
       if (response.ok) {
-        alert('Refund request submitted successfully');
+        showAlert('Refund request submitted successfully', 'Success');
         setShowRefundModal(false);
         setRefundReason('');
         loadOrderDetails();
       } else {
         const data = await response.json();
-        alert(data.message || 'Failed to request refund');
+        showAlert(data.message || 'Failed to request refund', 'Error');
       }
     } catch (err) {
       console.error('Error requesting refund:', err);
-      alert('Error requesting refund');
+      showAlert('Error requesting refund', 'Error');
     } finally {
       setSubmittingRefund(false);
     }

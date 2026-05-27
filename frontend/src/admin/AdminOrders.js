@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { showAlert } from '../utils/alertDialog';
 import AdminLayout from './AdminLayout';
 
 const AdminOrders = () => {
@@ -71,12 +72,12 @@ const AdminOrders = () => {
             });
 
             if (!response.ok) throw new Error('Failed to confirm receipt');
-            alert('Receipt confirmed successfully!');
+            showAlert('Receipt confirmed successfully!', 'Success');
             setShowReceiptModal(false);
             fetchAllData();
         } catch (err) {
             console.error('Error:', err);
-            alert('Error confirming receipt');
+            showAlert('Error confirming receipt', 'Error');
         }
     };
 
@@ -91,13 +92,13 @@ const AdminOrders = () => {
             });
 
             if (!response.ok) throw new Error('Failed to reject receipt');
-            alert('Payment rejected successfully!');
+            showAlert('Payment rejected successfully!', 'Success');
             setShowReceiptModal(false);
             setRejectionReason('');
             fetchAllData();
         } catch (err) {
             console.error('Error:', err);
-            alert('Error rejecting payment');
+            showAlert('Error rejecting payment', 'Error');
         }
     };
 

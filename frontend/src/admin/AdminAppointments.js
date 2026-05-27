@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { showAlert } from '../utils/alertDialog';
 import AdminLayout from './AdminLayout';
 
 const AdminAppointments = () => {
@@ -78,7 +79,7 @@ const AdminAppointments = () => {
             }
         } catch (err) {
             console.error('Error releasing employee:', err);
-            alert('Failed to release employee: ' + err.message);
+            showAlert('Failed to release employee: ' + err.message, 'Error');
         } finally {
             setUnassigning(false);
         }

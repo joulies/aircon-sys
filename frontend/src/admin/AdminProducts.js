@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { showAlert } from '../utils/alertDialog';
 import AdminLayout from './AdminLayout';
 
 const emptyForm = {
@@ -186,7 +187,7 @@ const AdminProducts = () => {
             setShowDeleteConfirm(false);
             setDeleteTarget(null);
         } catch (err) {
-            alert('Error: ' + err.message);
+            showAlert('Error: ' + err.message, 'Error');
         } finally {
             setDeleteLoading(false);
         }
