@@ -8,6 +8,7 @@ const AdminAppointments = () => {
     const [selectedAppointment, setSelectedAppointment] = useState(null);
     const [showModal, setShowModal] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
+    const [filterStatus, setFilterStatus] = useState('all');
 
     const fetchAppointments = async () => {
         try {
@@ -38,11 +39,13 @@ const AdminAppointments = () => {
     const getStatusColor = (status) => {
         if (status === 'completed') return '#28a745';
         if (status === 'pending') return '#ffc107';
+        if (status === 'cancelled') return '#dc3545';
         return '#6c757d';
     };
 
     const getStatusBadge = (status) => {
         if (status === 'completed') return '✓ Completed';
+        if (status === 'cancelled') return '✕ Cancelled';
         return 'Pending';
     };
 
@@ -90,6 +93,28 @@ const AdminAppointments = () => {
                 </button>
             </div>
 
+            <div style={{ marginBottom: '20px', display: 'flex', gap: '10px' }}>
+                {['all', 'pending', 'completed', 'cancelled'].map(status => (
+                    <button
+                        key={status}
+                        onClick={() => setFilterStatus(status)}
+                        style={{
+                            padding: '8px 16px',
+                            backgroundColor: filterStatus === status ? '#0066cc' : '#f0f0f0',
+                            color: filterStatus === status ? '#fff' : '#333',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontWeight: '600',
+                            fontSize: '14px',
+                            textTransform: 'capitalize'
+                        }}
+                    >
+                        {status === 'all' ? 'All Appointments' : status === 'cancelled' ? '✕ Cancelled' : status === 'completed' ? '✓ Completed' : '📅 Pending'}
+                    </button>
+                ))}
+            </div>
+
             <div className="recent-section">
                 {appointments.length === 0 ? (
                     <p style={{ color: '#666' }}>No appointments found</p>
@@ -107,10 +132,12 @@ const AdminAppointments = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {appointments.map((apt) => (
-                                <tr key={apt.id} style={{ borderBottom: '1px solid #eee' }}>
-                                    <td style={{ padding: '12px', color: '#333', fontWeight: '600' }}>{apt.appointment_number}</td>
-                                    <td style={{ padding: '12px', color: '#333' }}>{apt.fname} {apt.lname}</td>
+                            {appointments
+                                .filter(apt => filterStatus === 'all' || apt.completion_status === filterStatus)
+                                .map((apt) => (
+                                <tr key={apt.id} style={{ borderBottom: '1px solid #eee', opacity: apt.completion_status === 'cancelled' ? 0.7 : 1, backgroundColor: apt.completion_status === 'cancelled' ? '#f8f9fa' : 'transparent' }}>
+                                    <td style={{ padding: '12px', color: apt.completion_status === 'cancelled' ? '#666' : '#333', fontWeight: '600' }}>{apt.appointment_number}</td>
+                                    <td style={{ padding: '12px', color: apt.completion_status === 'cancelled' ? '#666' : '#333' }}>{apt.fname} {apt.lname}</td>
                                     <td style={{ padding: '12px', color: '#666' }}>
                                         {new Date(apt.appointment_date).toLocaleDateString()}
                                     </td>
@@ -169,6 +196,19 @@ const AdminAppointments = () => {
                         overflowY: 'auto'
                     }}>
                         <h3 style={{ marginTop: 0, marginBottom: '20px', color: '#333' }}>Appointment Details</h3>
+
+                        {selectedAppointment.completion_status === 'cancelled' && (
+                            <div style={{
+                                backgroundColor: '#f8d7da',
+                                border: '1px solid #f5c6cb',
+                                borderRadius: '4px',
+                                padding: '12px',
+                                marginBottom: '20px',
+                                color: '#721c24'
+                            }}>
+                                <strong>⚠ Cancelled Appointment:</strong> This appointment was cancelled by the customer. The time slot is now available for rebooking.
+                            </div>
+                        )}
 
                         <div style={{ marginBottom: '15px' }}>
                             <label style={{ display: 'block', fontWeight: '600', color: '#666', marginBottom: '5px' }}>Appointment #:</label>

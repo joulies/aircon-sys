@@ -129,6 +129,10 @@ function OrderTrackingPage() {
       if (refundRequest) {
         const status = refundRequest.status?.charAt(0).toUpperCase() + refundRequest.status?.slice(1);
         alert(`Cannot cancel order. Your refund request is currently ${status.toLowerCase()}.`);
+      } else if (order.status?.toLowerCase() === 'completed') {
+        alert('Cannot cancel this order. The installation has been completed.');
+      } else if (order.status?.toLowerCase() === 'cancelled') {
+        alert('This order has already been cancelled.');
       } else if (order.payment_method?.toLowerCase() !== 'cod' &&
           (order.payment_status?.toLowerCase() === 'pending confirmation' ||
            order.payment_status?.toLowerCase() === 'unpaid')) {
@@ -254,9 +258,21 @@ function OrderTrackingPage() {
               </button>
             )}
             {!canCancel && !refundRequest && (
-              <button className="action-btn cancel-btn" disabled style={{ opacity: 0.5, cursor: 'not-allowed' }}>
-                <i className="fa fa-times"></i> Cancel Order (Unavailable)
-              </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <button className="action-btn cancel-btn" disabled style={{ opacity: 0.5, cursor: 'not-allowed' }}>
+                  <i className="fa fa-times"></i> Cancel Order (Unavailable)
+                </button>
+                {order.status?.toLowerCase() === 'completed' && (
+                  <p style={{ margin: 0, fontSize: '12px', color: '#dc3545', fontStyle: 'italic' }}>
+                    ✓ Installation completed. Orders cannot be cancelled after completion.
+                  </p>
+                )}
+                {order.status?.toLowerCase() === 'cancelled' && (
+                  <p style={{ margin: 0, fontSize: '12px', color: '#6c757d', fontStyle: 'italic' }}>
+                    This order has already been cancelled.
+                  </p>
+                )}
+              </div>
             )}
             {canRefund && (
               <button className="action-btn refund-btn" onClick={() => setShowRefundModal(true)}>

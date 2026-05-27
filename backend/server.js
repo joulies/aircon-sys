@@ -1076,6 +1076,11 @@ app.put("/appointments/:id/complete", authenticateToken, (req, res) => {
           return res.status(400).json({ success: false, message: "Appointment already marked as completed" });
         }
 
+        // Check if appointment is cancelled
+        if (appointment.completion_status === 'cancelled') {
+          return res.status(400).json({ success: false, message: "This appointment has been cancelled by the customer. The time slot is now available for other bookings." });
+        }
+
         // Check if appointment time has arrived
         const appointmentDateTime = new Date(appointment.appointment_date);
         const [hours, minutes] = appointment.appointment_time.split(':');
@@ -1628,14 +1633,14 @@ app.post("/orders/:id/cancel", authenticateToken, (req, res) => {
 
     const order = orders[0];
 
-    // Check if order is already cancelled
+  // Check if order is already cancelled
     if (order.status === 'cancelled') {
       return res.status(400).json({ success: false, message: "Order is already cancelled" });
     }
 
-    // Check if order is completed
-    if (order.status === 'Completed' || order.status === 'completed') {
-      return res.status(400).json({ success: false, message: "Cannot cancel completed orders" });
+    // Check if order is completed - cannot cancel completed orders
+    if (order.status?.toLowerCase() === 'Completed' || order.status?.toLowerCase() === 'completed') {
+      return res.status(400).json({ success: false, message: "Cannot cancel completed orders. Installation has already been completed." });
     }
 
     // For PayMaya/GCash, require payment confirmation by admin
@@ -1689,6 +1694,15 @@ app.post("/orders/:id/cancel", authenticateToken, (req, res) => {
             if (err) {
               return res.status(500).json({ success: false, message: "Failed to cancel order" });
             }
+
+            // Update associated appointment status to cancelled (frees up the time slot)
+            db.query(
+              "UPDATE appointments SET completion_status = ? WHERE order_id = ?",
+              ['cancelled', id],
+              (err) => {
+                if (err) console.error("Error updating appointment status:", err);
+              }
+            );
 
             // Add notification
             db.query(

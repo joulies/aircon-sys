@@ -63,7 +63,7 @@ const EmployeeDashboard = () => {
             const pending = appointments.filter(a => a.completion_status === 'pending').length;
             const completed = appointments.filter(a => a.completion_status === 'completed').length;
 
-            // Get upcoming appointments (limited to 5)
+            // Get upcoming appointments (limited to 5, exclude cancelled)
             const upcoming = appointments
                 .filter(a => a.completion_status === 'pending')
                 .sort((a, b) => new Date(a.appointment_date) - new Date(b.appointment_date))
@@ -92,7 +92,7 @@ const EmployeeDashboard = () => {
         <div>
             <div className="page-header">
                 <div>
-                    <h2>Welcome, {user?.fname || 'Employee'}</h2>
+                    <h2>Welcome, {user ? `${user.fname || ''} ${user.lname || ''}`.trim() || 'Employee' : 'Employee'}</h2>
                     <p className="subtitle">Here's what's happening with your appointments</p>
                 </div>
             </div>

@@ -67,7 +67,20 @@ const EmployeeAssignedAppointments = () => {
 
     const canMarkComplete = (appointment) => {
         const appointmentDateTime = getAppointmentDateTime(appointment.appointment_date, appointment.appointment_time);
-        return currentTime >= appointmentDateTime;
+        return currentTime >= appointmentDateTime && appointment.completion_status !== 'cancelled';
+    };
+
+    const getFilteredAppointments = () => {
+        if (filter === 'all') {
+            return appointments;
+        } else if (filter === 'upcoming') {
+            return appointments.filter(a => a.completion_status === 'pending');
+        } else if (filter === 'completed') {
+            return appointments.filter(a => a.completion_status === 'completed');
+        } else if (filter === 'cancelled') {
+            return appointments.filter(a => a.completion_status === 'cancelled');
+        }
+        return appointments;
     };
 
     const getTimeRemaining = (appointment) => {
@@ -119,21 +132,23 @@ const EmployeeAssignedAppointments = () => {
 
     const renderAppointmentCard = (appointment) => {
         const isComplete = appointment.completion_status === 'completed';
+        const isCancelled = appointment.completion_status === 'cancelled';
         const canMark = canMarkComplete(appointment);
         const timeRemaining = getTimeRemaining(appointment);
 
         return (
         <div key={appointment.id} className="appointment-card" style={{
-            background: '#fff',
-            border: '1px solid #e0e0e0',
+            background: isCancelled ? '#f8f9fa' : '#fff',
+            border: isCancelled ? '1px solid #dee2e6' : '1px solid #e0e0e0',
             borderRadius: '8px',
             padding: '20px',
             marginBottom: '15px',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+            boxShadow: isCancelled ? 'none' : '0 2px 4px rgba(0,0,0,0.1)',
+            opacity: isCancelled ? 0.7 : 1
         }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '15px' }}>
                 <div>
-                    <h3 style={{ margin: '0 0 8px 0', color: '#333', fontSize: '16px', fontWeight: '600' }}>
+                    <h3 style={{ margin: '0 0 8px 0', color: isCancelled ? '#999' : '#333', fontSize: '16px', fontWeight: '600' }}>
                         {appointment.appointment_number}
                     </h3>
                     <p style={{ margin: '0', color: '#666', fontSize: '14px' }}>
@@ -145,12 +160,26 @@ const EmployeeAssignedAppointments = () => {
                     borderRadius: '20px',
                     fontSize: '12px',
                     fontWeight: '600',
-                    background: isComplete ? '#d4edda' : '#d1ecf1',
-                    color: isComplete ? '#155724' : '#0c5460'
+                    background: isCancelled ? '#f8d7da' : isComplete ? '#d4edda' : '#d1ecf1',
+                    color: isCancelled ? '#721c24' : isComplete ? '#155724' : '#0c5460'
                 }}>
-                    {isComplete ? '✓ Completed' : 'Pending'}
+                    {isCancelled ? '✕ Cancelled' : isComplete ? '✓ Completed' : 'Pending'}
                 </span>
             </div>
+
+            {isCancelled && (
+              <div style={{
+                backgroundColor: '#fff3cd',
+                border: '1px solid #ffeaa7',
+                borderRadius: '4px',
+                padding: '12px',
+                marginBottom: '15px',
+                color: '#856404',
+                fontSize: '13px'
+              }}>
+                <strong>⚠ Cancelled:</strong> This appointment has been cancelled by the customer. The time slot is now available for other bookings.
+              </div>
+            )}
 
             <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: '15px', marginBottom: '15px' }}>
                 <h4 style={{ margin: '0 0 10px 0', color: '#333', fontSize: '14px', fontWeight: '600' }}>
@@ -236,7 +265,7 @@ const EmployeeAssignedAppointments = () => {
                 </div>
             )}
 
-            {!isComplete && (
+            {!isComplete && !isCancelled && (
                 <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
                     <button
                         onClick={() => handleMarkComplete(appointment.id)}
@@ -257,6 +286,21 @@ const EmployeeAssignedAppointments = () => {
                         {submitting ? 'Processing...' : canMark ? '✓ Mark Complete' : `Available in ${timeRemaining || 'processing...'}`}
                     </button>
                 </div>
+            )}
+
+            {isCancelled && (
+              <div style={{
+                padding: '10px 16px',
+                backgroundColor: '#f8f9fa',
+                color: '#666',
+                borderRadius: '6px',
+                textAlign: 'center',
+                marginTop: '15px',
+                border: '1px solid #dee2e6',
+                fontSize: '14px'
+              }}>
+                ℹ️ No action needed - this appointment has been cancelled
+              </div>
             )}
         </div>
     );
@@ -285,7 +329,7 @@ const EmployeeAssignedAppointments = () => {
             </div>
 
             <div style={{ marginBottom: '20px', display: 'flex', gap: '10px' }}>
-                {['upcoming', 'completed', 'all'].map(status => (
+                {['upcoming', 'completed', 'cancelled', 'all'].map(status => (
                     <button
                         key={status}
                         onClick={() => setFilter(status)}
@@ -301,7 +345,7 @@ const EmployeeAssignedAppointments = () => {
                             textTransform: 'capitalize'
                         }}
                     >
-                        {status === 'upcoming' ? '📅 Upcoming' : status === 'completed' ? '✓ Completed' : 'All'}
+                        {status === 'upcoming' ? '📅 Upcoming' : status === 'completed' ? '✓ Completed' : status === 'cancelled' ? '✕ Cancelled' : 'All'}
                     </button>
                 ))}
             </div>
@@ -310,7 +354,7 @@ const EmployeeAssignedAppointments = () => {
                 <p style={{ textAlign: 'center', color: '#666', padding: '40px' }}>Loading appointments...</p>
             ) : error ? (
                 <p style={{ textAlign: 'center', color: '#dc3545', padding: '40px' }}>Error: {error}</p>
-            ) : appointments.length === 0 ? (
+            ) : getFilteredAppointments().length === 0 ? (
                 <div className="empty-state" style={{ textAlign: 'center', padding: '60px 20px' }}>
                     <i style={{ fontSize: '48px', color: '#999', display: 'block', marginBottom: '15px' }} className="fas fa-calendar-times"></i>
                     <p style={{ color: '#666', fontSize: '16px' }}>
@@ -319,7 +363,7 @@ const EmployeeAssignedAppointments = () => {
                 </div>
             ) : (
                 <div style={{ maxWidth: '1000px' }}>
-                    {appointments.map(renderAppointmentCard)}
+                    {getFilteredAppointments().map(renderAppointmentCard)}
                 </div>
             )}
         </div>

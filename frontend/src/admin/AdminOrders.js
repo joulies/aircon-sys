@@ -5,6 +5,7 @@ const AdminOrders = () => {
     const [orders, setOrders] = useState([]);
     const [pendingReceipts, setPendingReceipts] = useState([]);
     const [awaitingAssignment, setAwaitingAssignment] = useState([]);
+    const [cancelledOrders, setCancelledOrders] = useState([]);
     const [employees, setEmployees] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -43,7 +44,12 @@ const AdminOrders = () => {
             const assignmentData = await assignmentRes.json();
             const employeesData = await employeesRes.json();
 
-            setOrders(ordersData);
+            // Separate cancelled orders from active orders
+            const activeOrders = ordersData.filter(o => o.status !== 'cancelled');
+            const cancelled = ordersData.filter(o => o.status === 'cancelled');
+
+            setOrders(activeOrders);
+            setCancelledOrders(cancelled);
             setPendingReceipts(receiptsData);
             setAwaitingAssignment(assignmentData);
             setEmployees(employeesData);
@@ -390,6 +396,19 @@ const AdminOrders = () => {
                     <h2>Order Details - {selectedOrder.order_number}</h2>
                     <hr style={{ margin: '15px 0' }} />
 
+                    {selectedOrder.status === 'cancelled' && (
+                        <div style={{
+                            backgroundColor: '#f8d7da',
+                            border: '1px solid #f5c6cb',
+                            borderRadius: '4px',
+                            padding: '15px',
+                            marginBottom: '20px',
+                            color: '#721c24'
+                        }}>
+                            <strong>⚠ Cancelled Order:</strong> This order has been cancelled by the customer. No further actions can be performed on this order.
+                        </div>
+                    )}
+
                     <div style={{ marginBottom: '20px' }}>
                         <h3 style={{ color: '#333', marginBottom: '15px' }}>Customer Information</h3>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
@@ -667,6 +686,63 @@ const AdminOrders = () => {
             );
         }
 
+        if (activeTab === 'cancelled') {
+            return (
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                        <tr style={{ borderBottom: '2px solid #eee' }}>
+                            <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Order ID</th>
+                            <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Customer</th>
+                            <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Amount</th>
+                            <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Payment Status</th>
+                            <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Order Status</th>
+                            <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Date</th>
+                            <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {data.map((order) => (
+                            <tr key={order.id} style={{ borderBottom: '1px solid #eee', opacity: 0.7, backgroundColor: '#f8f9fa' }}>
+                                <td style={{ padding: '12px', color: '#666', fontWeight: '600' }}>{order.order_number}</td>
+                                <td style={{ padding: '12px', color: '#666' }}>{order.fname} {order.lname}</td>
+                                <td style={{ padding: '12px', color: '#666' }}>₱{parseFloat(order.total_amount).toLocaleString()}</td>
+                                <td style={{ padding: '12px' }}>
+                                    <span className={`payment-status-pill status-${order.payment_status.toLowerCase().replace(' ', '')}`}>
+                                        {order.payment_status}
+                                    </span>
+                                </td>
+                                <td style={{ padding: '12px' }}>
+                                    <span style={{
+                                        padding: '4px 8px',
+                                        borderRadius: '4px',
+                                        fontSize: '12px',
+                                        fontWeight: '600',
+                                        backgroundColor: '#f8d7da',
+                                        color: '#721c24'
+                                    }}>
+                                        ✕ Cancelled
+                                    </span>
+                                </td>
+                                <td style={{ padding: '12px', color: '#666' }}>
+                                    {new Date(order.created_at).toLocaleDateString()}
+                                </td>
+                                <td style={{ padding: '12px' }}>
+                                    <button
+                                        onClick={() => {
+                                            setSelectedOrder(order);
+                                            setShowDetailsModal(true);
+                                        }}
+                                        style={{ marginRight: '8px', padding: '5px 10px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>
+                                        View Details
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            );
+        }
+
         return (
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
@@ -682,10 +758,10 @@ const AdminOrders = () => {
                 </thead>
                 <tbody>
                     {data.map((order) => (
-                        <tr key={order.id} style={{ borderBottom: '1px solid #eee' }}>
-                            <td style={{ padding: '12px', color: '#333', fontWeight: '600' }}>{order.order_number}</td>
-                            <td style={{ padding: '12px', color: '#333' }}>{order.fname} {order.lname}</td>
-                            <td style={{ padding: '12px', color: '#333' }}>₱{parseFloat(order.total_amount).toLocaleString()}</td>
+                        <tr key={order.id} style={{ borderBottom: '1px solid #eee', opacity: order.status === 'cancelled' ? 0.7 : 1, backgroundColor: order.status === 'cancelled' ? '#f8f9fa' : 'transparent' }}>
+                            <td style={{ padding: '12px', color: order.status === 'cancelled' ? '#666' : '#333', fontWeight: '600' }}>{order.order_number}</td>
+                            <td style={{ padding: '12px', color: order.status === 'cancelled' ? '#666' : '#333' }}>{order.fname} {order.lname}</td>
+                            <td style={{ padding: '12px', color: order.status === 'cancelled' ? '#666' : '#333' }}>₱{parseFloat(order.total_amount).toLocaleString()}</td>
                             <td style={{ padding: '12px' }}>
                                 <span className={`payment-status-pill status-${order.payment_status.toLowerCase().replace(' ', '')}`}>
                                     {order.payment_status}
@@ -783,10 +859,20 @@ const AdminOrders = () => {
                 >
                     👤 Awaiting Assignment ({awaitingAssignment.length})
                 </button>
+                <button
+                    onClick={() => setActiveTab('cancelled')}
+                    style={{
+                        padding: '10px 20px', backgroundColor: activeTab === 'cancelled' ? '#dc3545' : '#f0f0f0',
+                        color: activeTab === 'cancelled' ? 'white' : '#333', border: 'none',
+                        borderRadius: '4px 4px 0 0', cursor: 'pointer', fontWeight: activeTab === 'cancelled' ? '600' : '400'
+                    }}
+                >
+                    ✕ Cancelled ({cancelledOrders.length})
+                </button>
             </div>
 
             <div className="recent-section">
-                {renderTable(activeTab === 'all' ? orders : activeTab === 'pending-receipts' ? pendingReceipts : awaitingAssignment)}
+                {renderTable(activeTab === 'all' ? orders : activeTab === 'pending-receipts' ? pendingReceipts : activeTab === 'awaiting-assignment' ? awaitingAssignment : cancelledOrders)}
             </div>
 
             {renderReceiptModal()}
