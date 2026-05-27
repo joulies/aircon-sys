@@ -1005,6 +1005,49 @@ app.put("/appointments/:id/assign", async (req, res) => {
   }
 });
 
+// UNASSIGN/RELEASE EMPLOYEE FROM APPOINTMENT (ADMIN)
+app.delete("/appointments/:id/unassign", (req, res) => {
+  const appointmentId = req.params.id;
+
+  db.query(
+    "SELECT id, assigned_employee_id FROM appointments WHERE id = ?",
+    [appointmentId],
+    (err, appointments) => {
+      if (err) {
+        console.error("Error fetching appointment:", err);
+        return res.status(500).json({ error: "Failed to fetch appointment" });
+      }
+
+      if (!appointments || appointments.length === 0) {
+        return res.status(404).json({ error: "Appointment not found" });
+      }
+
+      const appointment = appointments[0];
+
+      if (!appointment.assigned_employee_id) {
+        return res.status(400).json({ error: "No employee assigned to this appointment" });
+      }
+
+      db.query(
+        "UPDATE appointments SET assigned_employee_id = NULL WHERE id = ?",
+        [appointmentId],
+        (err, result) => {
+          if (err) {
+            console.error("Error unassigning employee:", err);
+            return res.status(500).json({ error: "Failed to unassign employee" });
+          }
+
+          res.json({
+            success: true,
+            message: "Employee released successfully",
+            appointmentId: appointmentId
+          });
+        }
+      );
+    }
+  );
+});
+
 // GET UNAVAILABLE EMPLOYEES FOR APPOINTMENT (ADMIN)
 app.get("/appointments/:id/unavailable-employees", (req, res) => {
   const appointmentId = req.params.id;

@@ -9,6 +9,7 @@ const AdminAppointments = () => {
     const [showModal, setShowModal] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [filterStatus, setFilterStatus] = useState('all');
+    const [unassigning, setUnassigning] = useState(false);
 
     const fetchAppointments = async () => {
         try {
@@ -47,6 +48,40 @@ const AdminAppointments = () => {
         if (status === 'completed') return '✓ Completed';
         if (status === 'cancelled') return '✕ Cancelled';
         return 'Pending';
+    };
+
+    const handleReleaseEmployee = async () => {
+        if (!selectedAppointment) return;
+
+        setUnassigning(true);
+        try {
+            const response = await fetch(`http://localhost:5000/appointments/${selectedAppointment.id}/unassign`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to release employee');
+            }
+
+            const result = await response.json();
+
+            if (result.success) {
+                setSelectedAppointment({
+                    ...selectedAppointment,
+                    assigned_employee_id: null,
+                    technician_fname: null,
+                    technician_lname: null,
+                    technician_contact: null
+                });
+                fetchAppointments();
+            }
+        } catch (err) {
+            console.error('Error releasing employee:', err);
+            alert('Failed to release employee: ' + err.message);
+        } finally {
+            setUnassigning(false);
+        }
     };
 
     if (loading) {
@@ -279,7 +314,25 @@ const AdminAppointments = () => {
                             )}
                         </div>
 
-                        <div style={{ marginTop: '25px', textAlign: 'right' }}>
+                        <div style={{ marginTop: '25px', textAlign: 'right', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                            {selectedAppointment.completion_status === 'cancelled' && selectedAppointment.assigned_employee_id && (
+                                <button
+                                    onClick={handleReleaseEmployee}
+                                    disabled={unassigning}
+                                    style={{
+                                        padding: '8px 16px',
+                                        backgroundColor: '#dc3545',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        cursor: unassigning ? 'not-allowed' : 'pointer',
+                                        fontSize: '14px',
+                                        opacity: unassigning ? 0.6 : 1
+                                    }}
+                                >
+                                    {unassigning ? 'Releasing...' : '🔓 Release Employee'}
+                                </button>
+                            )}
                             <button
                                 onClick={() => setShowModal(false)}
                                 style={{
