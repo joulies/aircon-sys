@@ -15,7 +15,7 @@ function OrderTrackingPage() {
   const [refundReason, setRefundReason] = useState('');
   const [submittingRefund, setSubmittingRefund] = useState(false);
   const [refundRequest, setRefundRequest] = useState(null);
-  const [refreshing, setRefreshing] = useState(false);
+  const [, setRefreshing] = useState(false);
 
   const loadOrderDetails = useCallback(async () => {
     try {

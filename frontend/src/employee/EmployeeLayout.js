@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import logo from '../logo.png';
@@ -23,7 +23,12 @@ const EmployeeLayout = ({ children }) => {
     return (
         <div className="layout">
             <nav className="left-nav">
-                <img src={logo} alt="VA Industrial Electrical Services Logo" className="nav-logo" />
+                <img
+                    src={logo}
+                    alt="VA Industrial Electrical Services Logo"
+                    className="nav-logo"
+                />
+
                 <p className="company">VA Industrial — Employee</p>
 
                 <ul>
@@ -32,23 +37,25 @@ const EmployeeLayout = ({ children }) => {
                             to="/employee/dashboard"
                             className={`nav-link ${isActive('/employee/dashboard')}`}
                         >
-                            <i className="fas fa-home"></i>Dashboard
+                            <i className="fas fa-home"></i> Dashboard
                         </Link>
                     </li>
+
                     <li>
                         <Link
                             to="/employee/assigned"
                             className={`nav-link ${isActive('/employee/assigned')}`}
                         >
-                            <i className="fas fa-calendar-check"></i>Assigned Appointments
+                            <i className="fas fa-calendar-check"></i> Assigned Appointments
                         </Link>
                     </li>
+
                     <li>
                         <Link
                             to="/employee/history"
                             className={`nav-link ${isActive('/employee/history')}`}
                         >
-                            <i className="fas fa-history"></i>Appointments History
+                            <i className="fas fa-history"></i> Appointments History
                         </Link>
                     </li>
                 </ul>
@@ -61,15 +68,16 @@ const EmployeeLayout = ({ children }) => {
                             to="/employee/settings"
                             className={`nav-link ${isActive('/employee/settings')}`}
                         >
-                            <i className="fas fa-cog"></i>Account Settings
+                            <i className="fas fa-cog"></i> Account Settings
                         </Link>
                     </li>
+
                     <li>
                         <button
                             onClick={handleLogout}
                             className="nav-link logout-btn"
                         >
-                            <i className="fas fa-sign-out-alt"></i>Logout
+                            <i className="fas fa-sign-out-alt"></i> Logout
                         </button>
                     </li>
                 </ul>
