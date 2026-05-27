@@ -108,7 +108,7 @@ CREATE TABLE IF NOT EXISTS appointments (
   appointment_date DATE NOT NULL,
   appointment_time VARCHAR(10) NOT NULL,
   assigned_employee_id INT DEFAULT NULL,
-  completion_status ENUM('pending', 'completed') DEFAULT 'pending',
+  completion_status ENUM('pending', 'completed', 'cancelled') DEFAULT 'pending',
   completed_at TIMESTAMP NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY unique_user_datetime (user_id, appointment_date, appointment_time),
