@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:5000';
+const API_BASE_URL = 'https://aircon-sys.onrender.com';
 
 // Helper function to get auth headers
 const getAuthHeaders = () => {
@@ -9,74 +9,102 @@ const getAuthHeaders = () => {
   };
 };
 
-// AUTHENTICATION FUNCTIONS
+/* =========================
+   AUTHENTICATION
+========================= */
 
-// Signup
+// SIGNUP
 export const signup = async (fname, lname, email, contact, password) => {
   try {
     const response = await fetch(`${API_BASE_URL}/auth/signup`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fname, lname, email, contact, password }),
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        fname,
+        lname,
+        email,
+        contact,
+        password
+      })
     });
+
     const data = await response.json();
-    if (!response.ok) throw new Error(data.message || 'Signup failed');
-    
-    // Store token in localStorage
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Signup failed');
+    }
+
+    // store token if backend sends it
     if (data.token) {
       localStorage.setItem('authToken', data.token);
+    }
+
+    if (data.user) {
       localStorage.setItem('user', JSON.stringify(data.user));
     }
-    
+
     return data;
   } catch (error) {
-    console.error('Error during signup:', error);
+    console.error('Signup error:', error);
     throw error;
   }
 };
 
-// Login
+// LOGIN
 export const login = async (email, password) => {
   try {
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ email, password })
     });
+
     const data = await response.json();
-    if (!response.ok) throw new Error(data.message || 'Login failed');
-    
-    // Store token in localStorage
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Login failed');
+    }
+
     if (data.token) {
       localStorage.setItem('authToken', data.token);
+    }
+
+    if (data.user) {
       localStorage.setItem('user', JSON.stringify(data.user));
     }
-    
+
     return data;
   } catch (error) {
-    console.error('Error during login:', error);
+    console.error('Login error:', error);
     throw error;
   }
 };
 
-// Logout
+// LOGOUT
 export const logout = () => {
   localStorage.removeItem('authToken');
   localStorage.removeItem('user');
 };
 
-// Get stored user
+// GET USER
 export const getStoredUser = () => {
   const user = localStorage.getItem('user');
   return user ? JSON.parse(user) : null;
 };
 
-// Get auth token
+// GET TOKEN
 export const getToken = () => {
   return localStorage.getItem('authToken');
 };
 
-// Verify token
+/* =========================
+   AUTH VERIFY
+========================= */
+
 export const verifyToken = async (token) => {
   try {
     const response = await fetch(`${API_BASE_URL}/auth/verify`, {
@@ -84,142 +112,171 @@ export const verifyToken = async (token) => {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
-      },
+      }
     });
-    if (!response.ok) throw new Error('Token verification failed');
-    return await response.json();
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error('Token verification failed');
+    }
+
+    return data;
   } catch (error) {
-    console.error('Error verifying token:', error);
+    console.error('Verify token error:', error);
     throw error;
   }
 };
 
-// Request OTP
+/* =========================
+   OTP
+========================= */
+
 export const requestOtp = async (userId, email) => {
   try {
     const response = await fetch(`${API_BASE_URL}/auth/request-otp`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, email }),
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ userId, email })
     });
+
     const data = await response.json();
-    if (!response.ok) throw new Error(data.message || 'Failed to request OTP');
+
+    if (!response.ok) {
+      throw new Error(data.message || 'OTP request failed');
+    }
+
     return data;
   } catch (error) {
-    console.error('Error requesting OTP:', error);
+    console.error('OTP request error:', error);
     throw error;
   }
 };
 
-// Verify OTP
 export const verifyOtp = async (userId, email, otp) => {
   try {
     const response = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, email, otp }),
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ userId, email, otp })
     });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.message || 'OTP verification failed');
 
-    // Store token in localStorage
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'OTP verification failed');
+    }
+
     if (data.token) {
       localStorage.setItem('authToken', data.token);
     }
 
     return data;
   } catch (error) {
-    console.error('Error verifying OTP:', error);
+    console.error('OTP verify error:', error);
     throw error;
   }
 };
 
-// Get all products
+/* =========================
+   PRODUCTS
+========================= */
+
 export const fetchProducts = async () => {
   try {
     const response = await fetch(`${API_BASE_URL}/products`);
-    if (!response.ok) throw new Error('Failed to fetch products');
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch products');
+    }
+
     return await response.json();
   } catch (error) {
-    console.error('Error fetching products:', error);
+    console.error('Fetch products error:', error);
     throw error;
   }
 };
 
-// Add to cart
+/* =========================
+   CART
+========================= */
+
 export const addToCart = async (productId, quantity = 1) => {
   try {
-    console.log(`[API] addToCart called with product ${productId}, qty ${quantity}`);
     const response = await fetch(`${API_BASE_URL}/cart/add`, {
       method: 'POST',
       headers: getAuthHeaders(),
-      body: JSON.stringify({ product_id: productId, quantity }),
+      body: JSON.stringify({
+        product_id: productId,
+        quantity
+      })
     });
-    const data = await response.json();
-    console.log(`[API] addToCart response:`, { status: response.status, ok: response.ok, data });
-    
-    // Return data regardless of status - let caller handle success/failure
-    return { ...data, status: response.status, ok: response.ok };
+
+    return await response.json();
   } catch (error) {
-    console.error('[API] addToCart error:', error);
-    return { success: false, message: 'Network error: ' + error.message, ok: false };
+    console.error('Add to cart error:', error);
+    throw error;
   }
 };
 
-// Get cart count
 export const getCartCount = async () => {
   try {
     const response = await fetch(`${API_BASE_URL}/cart/count`, {
       headers: getAuthHeaders()
     });
-    if (!response.ok) throw new Error('Failed to fetch cart count');
+
     return await response.json();
   } catch (error) {
-    console.error('Error fetching cart count:', error);
+    console.error('Cart count error:', error);
     throw error;
   }
 };
 
-// Get notifications
+/* =========================
+   NOTIFICATIONS
+========================= */
+
 export const getNotifications = async () => {
   try {
     const response = await fetch(`${API_BASE_URL}/notifications`, {
       headers: getAuthHeaders()
     });
-    if (!response.ok) throw new Error('Failed to fetch notifications');
+
     return await response.json();
   } catch (error) {
-    console.error('Error fetching notifications:', error);
+    console.error('Notifications error:', error);
     throw error;
   }
 };
 
-// Delete notification
-export const deleteNotification = async (notificationId) => {
+export const deleteNotification = async (id) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/notifications/${notificationId}`, {
+    const response = await fetch(`${API_BASE_URL}/notifications/${id}`, {
       method: 'DELETE',
       headers: getAuthHeaders()
     });
-    if (!response.ok) throw new Error('Failed to delete notification');
+
     return await response.json();
   } catch (error) {
-    console.error('Error deleting notification:', error);
+    console.error('Delete notification error:', error);
     throw error;
   }
 };
 
-// Delete all notifications
 export const deleteAllNotifications = async () => {
   try {
     const response = await fetch(`${API_BASE_URL}/notifications/all`, {
       method: 'DELETE',
       headers: getAuthHeaders()
     });
-    if (!response.ok) throw new Error('Failed to delete all notifications');
+
     return await response.json();
   } catch (error) {
-    console.error('Error deleting all notifications:', error);
+    console.error('Delete all notifications error:', error);
     throw error;
   }
 };

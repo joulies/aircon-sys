@@ -2713,6 +2713,25 @@ app.get("/api/test", (req, res) => {
   res.json({ message: "Backend is working" });
 });
 
+app.post("/api/signup", (req, res) => {
+  const { name, email, password } = req.body;
+
+  if (!name || !email || !password) {
+    return res.status(400).json({ message: "Missing fields" });
+  }
+
+  const sql = "INSERT INTO users (name, email, password) VALUES (?, ?, ?)";
+
+  db.query(sql, [name, email, password], (err, result) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ message: "Database error" });
+    }
+
+    res.json({ message: "User created successfully" });
+  });
+});
+
 // Test endpoint - create sample notification
 app.post("/notifications/test/create", authenticateToken, (req, res) => {
   const userId = req.userId;
