@@ -1,3 +1,11 @@
+process.on("uncaughtException", (err) => {
+  console.error("🔥 UNCUGHT EXCEPTION:", err);
+});
+
+process.on("unhandledRejection", (err) => {
+  console.error("🔥 UNHANDLED REJECTION:", err);
+});
+
 const express = require("express");
 const mysql = require("mysql2");
 const cors = require("cors");
