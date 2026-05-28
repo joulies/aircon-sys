@@ -6,8 +6,16 @@ process.on("unhandledRejection", (err) => {
   console.error("🔥 UNHANDLED REJECTION:", err);
 });
 
-const express = require("express");
 const cors = require("cors");
+
+app.use(cors({
+  origin: "*",
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
+
+const express = require("express");
+
 const bodyParser = require("body-parser");
 const multer = require("multer");
 const path = require("path");
@@ -21,12 +29,6 @@ require("dotenv").config();
 
 const app = express();
 const JWT_SECRET = "your_jwt_secret_key_change_in_production";
-
-app.use(cors({
-  origin: "*",
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  allowedHeaders: ["Content-Type", "Authorization"]
-}));
 
 // ─── PH Time helper ──────────────────────────────────────
 // mysql2 returns DATE columns as UTC JS Date objects.
@@ -69,7 +71,9 @@ transporter.verify((err, success) => {
   } else {
     console.log("✓ Email service configured successfully");
   }
+});
 
+app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
