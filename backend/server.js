@@ -84,15 +84,15 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 
-// Test DB
-db.connect(err => {
+db.getConnection((err, connection) => {
   if (err) {
     console.error("MySQL Connection Error:", err.message);
-    process.exit(1);
+    return;
   }
-  console.log("✓ Connected to MySQL database");
-});
 
+  console.log("✓ Connected to MySQL database");
+  connection.release();
+});
 // ==========================================
 // MIDDLEWARE
 // ==========================================
