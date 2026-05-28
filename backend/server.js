@@ -39,7 +39,9 @@ const formatPHDate = (val) => {
 };
 // Configure Gmail SMTP
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false,
   auth: {
     user: process.env.GMAIL_USER || "your-email@gmail.com",
     pass: process.env.GMAIL_PASSWORD || "your-app-password"
