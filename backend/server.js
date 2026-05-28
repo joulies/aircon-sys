@@ -15,7 +15,7 @@ app.use(cors({
 }));
 
 const express = require("express");
-const cors = require("cors");
+
 const bodyParser = require("body-parser");
 const multer = require("multer");
 const path = require("path");
@@ -2760,7 +2760,7 @@ app.post("/notifications/test/create", authenticateToken, (req, res) => {
 });
 
 const express = require("express");
-const cors = require("cors");
+
 
 const app = express();
 
