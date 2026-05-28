@@ -6,6 +6,14 @@ process.on("unhandledRejection", (err) => {
   console.error("🔥 UNHANDLED REJECTION:", err);
 });
 
+const cors = require("cors");
+
+app.use(cors({
+  origin: "*",
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
+
 const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
@@ -2749,6 +2757,33 @@ app.post("/notifications/test/create", authenticateToken, (req, res) => {
       res.json({ success: true, message: "Test notification created", notificationId: result.insertId });
     }
   );
+});
+
+const express = require("express");
+const cors = require("cors");
+
+const app = express();
+
+// IMPORTANT
+app.use(express.json());
+
+app.use(cors({
+  origin: "https://va-sys.shop"
+}));
+
+// ROUTES
+const authRoutes = require("./routes/auth");
+app.use("/auth", authRoutes);
+
+// TEST
+app.get("/", (req, res) => {
+  res.send("API running");
+});
+
+const PORT = process.env.PORT || 5000;
+
+app.listen(PORT, () => {
+  console.log("Server running");
 });
 
 // Start server
