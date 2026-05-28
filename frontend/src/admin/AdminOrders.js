@@ -169,6 +169,24 @@ const AdminOrders = () => {
         }
     };
 
+    const getOrderStatusColor = (status) => {
+        const colors = {
+            'pending': { bg: '#fff3cd', text: '#856404' },
+            'completed': { bg: '#d4edda', text: '#155724' },
+            'cancelled': { bg: '#f8d7da', text: '#721c24' }
+        };
+        return colors[status?.toLowerCase()] || { bg: '#e2e3e5', text: '#383d41' };
+    };
+
+    const getPaymentStatusColor = (status) => {
+        const colors = {
+            'unpaid': { bg: '#f8d7da', text: '#721c24' },
+            'half paid': { bg: '#fff3cd', text: '#856404' },
+            'paid': { bg: '#d4edda', text: '#155724' }
+        };
+        return colors[status?.toLowerCase()] || { bg: '#e2e3e5', text: '#383d41' };
+    };
+
     const renderReceiptModal = () => {
         if (!showReceiptModal || !selectedOrder) return null;
 
@@ -514,6 +532,24 @@ const AdminOrders = () => {
                         </div>
                     </div>
 
+                    <div style={{ marginBottom: '20px' }}>
+                        <h3 style={{ color: '#333', marginBottom: '15px' }}>Appointment Information</h3>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                            <div>
+                                <p style={{ margin: '0 0 5px 0', color: '#666', fontSize: '12px', fontWeight: '600' }}>Appointment #</p>
+                                <p style={{ margin: 0, color: '#333', fontSize: '14px' }}>{selectedOrder.appointment_number || 'N/A'}</p>
+                            </div>
+                            <div>
+                                <p style={{ margin: '0 0 5px 0', color: '#666', fontSize: '12px', fontWeight: '600' }}>Appointment Date</p>
+                                <p style={{ margin: 0, color: '#333', fontSize: '14px' }}>{selectedOrder.appointment_date ? new Date(selectedOrder.appointment_date).toLocaleDateString() : 'N/A'}</p>
+                            </div>
+                            <div>
+                                <p style={{ margin: '0 0 5px 0', color: '#666', fontSize: '12px', fontWeight: '600' }}>Appointment Time</p>
+                                <p style={{ margin: 0, color: '#333', fontSize: '14px' }}>{selectedOrder.appointment_time || 'N/A'}</p>
+                            </div>
+                        </div>
+                    </div>
+
                     {selectedOrder.proof_file && (
                         <div style={{ marginBottom: '20px' }}>
                             <h3 style={{ color: '#333', marginBottom: '15px' }}>Payment Proof</h3>
@@ -572,39 +608,45 @@ const AdminOrders = () => {
 
         if (activeTab === 'pending-receipts') {
             return (
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                     <thead>
                         <tr style={{ borderBottom: '2px solid #eee' }}>
-                            <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Order ID</th>
-                            <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Customer</th>
-                            <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Payment Method</th>
-                            <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Downpayment</th>
-                            <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Status</th>
-                            <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Actions</th>
+                            <th style={{ padding: '8px', textAlign: 'left', color: '#666', fontWeight: '600', fontSize: '12px' }}>Order ID</th>
+                            <th style={{ padding: '8px', textAlign: 'left', color: '#666', fontWeight: '600', fontSize: '12px' }}>Customer</th>
+                            <th style={{ padding: '8px', textAlign: 'left', color: '#666', fontWeight: '600', fontSize: '12px' }}>Appointment #</th>
+                            <th style={{ padding: '8px', textAlign: 'left', color: '#666', fontWeight: '600', fontSize: '12px' }}>Appointment Date</th>
+                            <th style={{ padding: '8px', textAlign: 'left', color: '#666', fontWeight: '600', fontSize: '12px' }}>Payment Method</th>
+                            <th style={{ padding: '8px', textAlign: 'left', color: '#666', fontWeight: '600', fontSize: '12px' }}>Downpayment</th>
+                            <th style={{ padding: '8px', textAlign: 'left', color: '#666', fontWeight: '600', fontSize: '12px' }}>Status</th>
+                            <th style={{ padding: '8px', textAlign: 'left', color: '#666', fontWeight: '600', fontSize: '12px' }}>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {data.map((order) => (
                             <tr key={order.id} style={{ borderBottom: '1px solid #eee' }}>
-                                <td style={{ padding: '12px', color: '#333', fontWeight: '600' }}>{order.order_number}</td>
-                                <td style={{ padding: '12px', color: '#333' }}>{order.fname} {order.lname}</td>
-                                <td style={{ padding: '12px', color: '#333' }}>{order.payment_method.toUpperCase()}</td>
-                                <td style={{ padding: '12px', color: '#333' }}>₱{parseFloat(order.downpayment_amount).toFixed(2)}</td>
-                                <td style={{ padding: '12px' }}>
-                                    <span style={{ backgroundColor: '#fff3cd', color: '#856404', padding: '4px 8px', borderRadius: '4px', fontSize: '12px' }}>
+                                <td style={{ padding: '8px', color: '#333', fontWeight: '600', fontSize: '13px' }}>{order.order_number}</td>
+                                <td style={{ padding: '8px', color: '#333', fontSize: '13px' }}>{order.fname} {order.lname}</td>
+                                <td style={{ padding: '8px', color: '#333', fontSize: '13px' }}>{order.appointment_number || 'N/A'}</td>
+                                <td style={{ padding: '8px', color: '#333', fontSize: '13px' }}>
+                                    {order.appointment_date ? new Date(order.appointment_date).toLocaleDateString() : 'N/A'}
+                                </td>
+                                <td style={{ padding: '8px', color: '#333', fontSize: '13px' }}>{order.payment_method.toUpperCase()}</td>
+                                <td style={{ padding: '8px', color: '#333', fontSize: '13px' }}>₱{parseFloat(order.downpayment_amount).toFixed(2)}</td>
+                                <td style={{ padding: '8px' }}>
+                                    <span style={{ backgroundColor: '#fff3cd', color: '#856404', padding: '3px 6px', borderRadius: '3px', fontSize: '11px' }}>
                                         Half Paid - Awaiting Confirmation
                                     </span>
                                 </td>
-                                <td style={{ padding: '12px' }}>
+                                <td style={{ padding: '8px' }}>
                                     <button
                                         onClick={() => {
                                             setSelectedOrder(order);
                                             setShowReceiptModal(true);
                                         }}
                                         style={{
-                                            padding: '5px 10px', backgroundColor: '#28a745',
-                                            color: 'white', border: 'none', borderRadius: '4px',
-                                            cursor: 'pointer', fontSize: '12px'
+                                            padding: '4px 8px', backgroundColor: '#28a745',
+                                            color: 'white', border: 'none', borderRadius: '3px',
+                                            cursor: 'pointer', fontSize: '11px'
                                         }}
                                     >
                                         View Receipt
@@ -619,49 +661,60 @@ const AdminOrders = () => {
 
         if (activeTab === 'awaiting-assignment') {
             return (
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                     <thead>
                         <tr style={{ borderBottom: '2px solid #eee' }}>
-                            <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Order ID</th>
-                            <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Customer</th>
-                            <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Contact</th>
-                            <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Amount</th>
-                            <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Payment Method</th>
-                            <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Status</th>
-                            <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Actions</th>
+                            <th style={{ padding: '8px', textAlign: 'left', color: '#666', fontWeight: '600', fontSize: '12px' }}>Order ID</th>
+                            <th style={{ padding: '8px', textAlign: 'left', color: '#666', fontWeight: '600', fontSize: '12px' }}>Customer</th>
+                            <th style={{ padding: '8px', textAlign: 'left', color: '#666', fontWeight: '600', fontSize: '12px' }}>Appointment #</th>
+                            <th style={{ padding: '8px', textAlign: 'left', color: '#666', fontWeight: '600', fontSize: '12px' }}>Appointment Date & Time</th>
+                            <th style={{ padding: '8px', textAlign: 'left', color: '#666', fontWeight: '600', fontSize: '12px' }}>Contact</th>
+                            <th style={{ padding: '8px', textAlign: 'left', color: '#666', fontWeight: '600', fontSize: '12px' }}>Amount</th>
+                            <th style={{ padding: '8px', textAlign: 'left', color: '#666', fontWeight: '600', fontSize: '12px' }}>Payment Method</th>
+                            <th style={{ padding: '8px', textAlign: 'left', color: '#666', fontWeight: '600', fontSize: '12px' }}>Status</th>
+                            <th style={{ padding: '8px', textAlign: 'left', color: '#666', fontWeight: '600', fontSize: '12px' }}>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {data.map((order) => (
                             <tr key={order.id} style={{ borderBottom: '1px solid #eee' }}>
-                                <td style={{ padding: '12px', color: '#333', fontWeight: '600' }}>{order.order_number}</td>
-                                <td style={{ padding: '12px', color: '#333' }}>{order.fname} {order.lname}</td>
-                                <td style={{ padding: '12px', color: '#333' }}>{order.contact}</td>
-                                <td style={{ padding: '12px', color: '#333' }}>₱{parseFloat(order.total_amount).toFixed(2)}</td>
-                                <td style={{ padding: '12px' }}>
+                                <td style={{ padding: '8px', color: '#333', fontWeight: '600', fontSize: '13px' }}>{order.order_number}</td>
+                                <td style={{ padding: '8px', color: '#333', fontSize: '13px' }}>{order.fname} {order.lname}</td>
+                                <td style={{ padding: '8px', color: '#333', fontSize: '13px' }}>{order.appointment_number || 'N/A'}</td>
+                                <td style={{ padding: '8px', color: '#333', fontSize: '13px' }}>
+                                    {order.appointment_date ? (
+                                        <div>
+                                            <div>{new Date(order.appointment_date).toLocaleDateString()}</div>
+                                            <div style={{ color: '#666', fontSize: '11px' }}>{order.appointment_time || '-'}</div>
+                                        </div>
+                                    ) : 'N/A'}
+                                </td>
+                                <td style={{ padding: '8px', color: '#333', fontSize: '13px' }}>{order.contact}</td>
+                                <td style={{ padding: '8px', color: '#333', fontSize: '13px' }}>₱{parseFloat(order.total_amount).toFixed(2)}</td>
+                                <td style={{ padding: '8px' }}>
                                     <span style={{
                                         backgroundColor: order.payment_method === 'cod' ? '#e8f5e9' : '#fff3cd',
                                         color: order.payment_method === 'cod' ? '#2e7d32' : '#856404',
-                                        padding: '4px 8px',
-                                        borderRadius: '4px',
-                                        fontSize: '12px',
+                                        padding: '3px 6px',
+                                        borderRadius: '3px',
+                                        fontSize: '11px',
                                         fontWeight: '600'
                                     }}>
                                         {order.payment_method === 'cod' ? '💰 COD' : order.payment_method.toUpperCase()}
                                     </span>
                                 </td>
-                                <td style={{ padding: '12px' }}>
+                                <td style={{ padding: '8px' }}>
                                     <span style={{
                                         backgroundColor: order.payment_method === 'cod' ? '#e3f2fd' : '#cce5ff',
                                         color: '#004085',
-                                        padding: '4px 8px',
-                                        borderRadius: '4px',
-                                        fontSize: '12px'
+                                        padding: '3px 6px',
+                                        borderRadius: '3px',
+                                        fontSize: '11px'
                                     }}>
                                         {order.payment_method === 'cod' ? 'Awaiting Assignment' : 'Half Paid - Awaiting Assignment'}
                                     </span>
                                 </td>
-                                <td style={{ padding: '12px' }}>
+                                <td style={{ padding: '8px' }}>
                                     <button
                                         onClick={() => {
                                             setSelectedOrder(order);
@@ -670,9 +723,9 @@ const AdminOrders = () => {
                                         }}
                                         disabled={order.status === 'cancelled'}
                                         style={{
-                                            padding: '5px 10px', backgroundColor: order.status === 'cancelled' ? '#ccc' : '#0066cc',
-                                            color: 'white', border: 'none', borderRadius: '4px',
-                                            cursor: order.status === 'cancelled' ? 'not-allowed' : 'pointer', fontSize: '12px',
+                                            padding: '4px 8px', backgroundColor: order.status === 'cancelled' ? '#ccc' : '#0066cc',
+                                            color: 'white', border: 'none', borderRadius: '3px',
+                                            cursor: order.status === 'cancelled' ? 'not-allowed' : 'pointer', fontSize: '11px',
                                             opacity: order.status === 'cancelled' ? 0.6 : 1
                                         }}
                                         title={order.status === 'cancelled' ? 'Cannot assign to cancelled orders' : ''}
@@ -689,51 +742,66 @@ const AdminOrders = () => {
 
         if (activeTab === 'cancelled') {
             return (
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                     <thead>
                         <tr style={{ borderBottom: '2px solid #eee' }}>
-                            <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Order ID</th>
-                            <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Customer</th>
-                            <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Amount</th>
-                            <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Payment Status</th>
-                            <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Order Status</th>
-                            <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Date</th>
-                            <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Actions</th>
+                            <th style={{ padding: '8px', textAlign: 'left', color: '#666', fontWeight: '600', fontSize: '12px' }}>Order ID</th>
+                            <th style={{ padding: '8px', textAlign: 'left', color: '#666', fontWeight: '600', fontSize: '12px' }}>Customer</th>
+                            <th style={{ padding: '8px', textAlign: 'left', color: '#666', fontWeight: '600', fontSize: '12px' }}>Appointment #</th>
+                            <th style={{ padding: '8px', textAlign: 'left', color: '#666', fontWeight: '600', fontSize: '12px' }}>Appointment Date</th>
+                            <th style={{ padding: '8px', textAlign: 'left', color: '#666', fontWeight: '600', fontSize: '12px' }}>Amount</th>
+                            <th style={{ padding: '8px', textAlign: 'left', color: '#666', fontWeight: '600', fontSize: '12px' }}>Payment Status</th>
+                            <th style={{ padding: '8px', textAlign: 'left', color: '#666', fontWeight: '600', fontSize: '12px' }}>Order Status</th>
+                            <th style={{ padding: '8px', textAlign: 'left', color: '#666', fontWeight: '600', fontSize: '12px' }}>Date</th>
+                            <th style={{ padding: '8px', textAlign: 'left', color: '#666', fontWeight: '600', fontSize: '12px' }}>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {data.map((order) => (
                             <tr key={order.id} style={{ borderBottom: '1px solid #eee', opacity: 0.7, backgroundColor: '#f8f9fa' }}>
-                                <td style={{ padding: '12px', color: '#666', fontWeight: '600' }}>{order.order_number}</td>
-                                <td style={{ padding: '12px', color: '#666' }}>{order.fname} {order.lname}</td>
-                                <td style={{ padding: '12px', color: '#666' }}>₱{parseFloat(order.total_amount).toLocaleString()}</td>
-                                <td style={{ padding: '12px' }}>
-                                    <span className={`payment-status-pill status-${order.payment_status.toLowerCase().replace(' ', '')}`}>
+                                <td style={{ padding: '8px', color: '#666', fontWeight: '600', fontSize: '13px' }}>{order.order_number}</td>
+                                <td style={{ padding: '8px', color: '#666', fontSize: '13px' }}>{order.fname} {order.lname}</td>
+                                <td style={{ padding: '8px', color: '#666', fontSize: '13px' }}>{order.appointment_number || 'N/A'}</td>
+                                <td style={{ padding: '8px', color: '#666', fontSize: '13px' }}>
+                                    {order.appointment_date ? new Date(order.appointment_date).toLocaleDateString() : 'N/A'}
+                                </td>
+                                <td style={{ padding: '8px', color: '#666', fontSize: '13px' }}>₱{parseFloat(order.total_amount).toLocaleString()}</td>
+                                <td style={{ padding: '8px' }}>
+                                    <span style={{
+                                        backgroundColor: getPaymentStatusColor(order.payment_status).bg,
+                                        color: getPaymentStatusColor(order.payment_status).text,
+                                        padding: '3px 6px',
+                                        borderRadius: '3px',
+                                        fontSize: '11px',
+                                        fontWeight: '600',
+                                        display: 'inline-block'
+                                    }}>
                                         {order.payment_status}
                                     </span>
                                 </td>
-                                <td style={{ padding: '12px' }}>
+                                <td style={{ padding: '8px' }}>
                                     <span style={{
-                                        padding: '4px 8px',
-                                        borderRadius: '4px',
-                                        fontSize: '12px',
+                                        backgroundColor: getOrderStatusColor(order.status).bg,
+                                        color: getOrderStatusColor(order.status).text,
+                                        padding: '3px 6px',
+                                        borderRadius: '3px',
+                                        fontSize: '11px',
                                         fontWeight: '600',
-                                        backgroundColor: '#f8d7da',
-                                        color: '#721c24'
+                                        display: 'inline-block'
                                     }}>
-                                        ✕ Cancelled
+                                        {order.status}
                                     </span>
                                 </td>
-                                <td style={{ padding: '12px', color: '#666' }}>
+                                <td style={{ padding: '8px', color: '#666', fontSize: '13px' }}>
                                     {new Date(order.created_at).toLocaleDateString()}
                                 </td>
-                                <td style={{ padding: '12px' }}>
+                                <td style={{ padding: '8px' }}>
                                     <button
                                         onClick={() => {
                                             setSelectedOrder(order);
                                             setShowDetailsModal(true);
                                         }}
-                                        style={{ marginRight: '8px', padding: '5px 10px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>
+                                        style={{ padding: '4px 8px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer', fontSize: '11px' }}>
                                         View Details
                                     </button>
                                 </td>
@@ -745,47 +813,74 @@ const AdminOrders = () => {
         }
 
         return (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '15px' }}>
                 <thead>
                     <tr style={{ borderBottom: '2px solid #eee' }}>
-                        <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Order ID</th>
-                        <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Customer</th>
-                        <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Amount</th>
-                        <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Payment Status</th>
-                        <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Order Status</th>
-                        <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Date</th>
-                        <th style={{ padding: '12px', textAlign: 'left', color: '#666', fontWeight: '600' }}>Actions</th>
+                        <th style={{ padding: '8px', textAlign: 'left', color: '#666', fontWeight: '600', fontSize: '12px' }}>Order ID</th>
+                        <th style={{ padding: '8px', textAlign: 'left', color: '#666', fontWeight: '600', fontSize: '12px' }}>Customer</th>
+                        <th style={{ padding: '8px', textAlign: 'left', color: '#666', fontWeight: '600', fontSize: '12px' }}>Appointment #</th>
+                        <th style={{ padding: '8px', textAlign: 'left', color: '#666', fontWeight: '600', fontSize: '12px' }}>Appointment Date & Time</th>
+                        <th style={{ padding: '8px', textAlign: 'left', color: '#666', fontWeight: '600', fontSize: '12px' }}>Amount</th>
+                        <th style={{ padding: '8px', textAlign: 'left', color: '#666', fontWeight: '600', fontSize: '12px' }}>Payment Status</th>
+                        <th style={{ padding: '8px', textAlign: 'left', color: '#666', fontWeight: '600', fontSize: '12px' }}>Order Status</th>
+                        <th style={{ padding: '8px', textAlign: 'left', color: '#666', fontWeight: '600', fontSize: '12px' }}>Date</th>
+                        <th style={{ padding: '8px', textAlign: 'left', color: '#666', fontWeight: '600', fontSize: '12px' }}>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {data.map((order) => (
                         <tr key={order.id} style={{ borderBottom: '1px solid #eee', opacity: order.status === 'cancelled' ? 0.7 : 1, backgroundColor: order.status === 'cancelled' ? '#f8f9fa' : 'transparent' }}>
-                            <td style={{ padding: '12px', color: order.status === 'cancelled' ? '#666' : '#333', fontWeight: '600' }}>{order.order_number}</td>
-                            <td style={{ padding: '12px', color: order.status === 'cancelled' ? '#666' : '#333' }}>{order.fname} {order.lname}</td>
-                            <td style={{ padding: '12px', color: order.status === 'cancelled' ? '#666' : '#333' }}>₱{parseFloat(order.total_amount).toLocaleString()}</td>
-                            <td style={{ padding: '12px' }}>
-                                <span className={`payment-status-pill status-${order.payment_status.toLowerCase().replace(' ', '')}`}>
+                            <td style={{ padding: '8px', color: order.status === 'cancelled' ? '#666' : '#333', fontWeight: '600', fontSize: '13px' }}>{order.order_number}</td>
+                            <td style={{ padding: '8px', color: order.status === 'cancelled' ? '#666' : '#333', fontSize: '13px' }}>{order.fname} {order.lname}</td>
+                            <td style={{ padding: '8px', color: order.status === 'cancelled' ? '#666' : '#333', fontSize: '13px' }}>{order.appointment_number || 'N/A'}</td>
+                            <td style={{ padding: '8px', color: order.status === 'cancelled' ? '#666' : '#333', fontSize: '13px' }}>
+                                {order.appointment_date ? (
+                                    <div>
+                                        <div>{new Date(order.appointment_date).toLocaleDateString()}</div>
+                                        <div style={{ color: '#666', fontSize: '11px' }}>{order.appointment_time || '-'}</div>
+                                    </div>
+                                ) : 'N/A'}
+                            </td>
+                            <td style={{ padding: '8px', color: order.status === 'cancelled' ? '#666' : '#333', fontSize: '13px' }}>₱{parseFloat(order.total_amount).toLocaleString()}</td>
+                            <td style={{ padding: '8px' }}>
+                                <span style={{
+                                    backgroundColor: getPaymentStatusColor(order.payment_status).bg,
+                                    color: getPaymentStatusColor(order.payment_status).text,
+                                    padding: '3px 6px',
+                                    borderRadius: '3px',
+                                    fontSize: '11px',
+                                    fontWeight: '600',
+                                    display: 'inline-block'
+                                }}>
                                     {order.payment_status}
                                 </span>
                             </td>
-                            <td style={{ padding: '12px' }}>
-                                <span className={`status-pill status-${order.status.toLowerCase()}`}>
+                            <td style={{ padding: '8px' }}>
+                                <span style={{
+                                    backgroundColor: getOrderStatusColor(order.status).bg,
+                                    color: getOrderStatusColor(order.status).text,
+                                    padding: '3px 6px',
+                                    borderRadius: '3px',
+                                    fontSize: '11px',
+                                    fontWeight: '600',
+                                    display: 'inline-block'
+                                }}>
                                     {order.status}
                                 </span>
                             </td>
-                            <td style={{ padding: '12px', color: '#666' }}>
+                            <td style={{ padding: '8px', color: '#666', fontSize: '13px' }}>
                                 {new Date(order.created_at).toLocaleDateString()}
                             </td>
-                            <td style={{ padding: '12px' }}>
+                            <td style={{ padding: '8px' }}>
                                 <button
                                     onClick={() => {
                                         setSelectedOrder(order);
                                         setShowDetailsModal(true);
                                     }}
                                     style={{
-                                        padding: '5px 10px', backgroundColor: '#0066cc',
-                                        color: 'white', border: 'none', borderRadius: '4px',
-                                        cursor: 'pointer', fontSize: '12px'
+                                        padding: '4px 8px', backgroundColor: '#0066cc',
+                                        color: 'white', border: 'none', borderRadius: '3px',
+                                        cursor: 'pointer', fontSize: '11px'
                                     }}
                                 >
                                     View Details

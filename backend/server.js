@@ -1505,12 +1505,113 @@ app.get("/orders", authenticateToken, (req, res) => {
   db.query(
     "SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC",
     [userId],
-    (err, results) => {
+    (err, orders) => {
       if (err) {
         console.error("Error fetching orders:", err);
         return res.json({ orders: [] });
       }
-      res.json({ orders: results });
+
+      // For each order, fetch related data
+      let processedOrders = [];
+      let completed = 0;
+
+      if (orders.length === 0) {
+        return res.json({ orders: [] });
+      }
+
+      orders.forEach((order) => {
+        // Get order items
+        db.query(
+          "SELECT * FROM order_items WHERE order_id = ?",
+          [order.id],
+          (err, items) => {
+            const orderData = { ...order, items: items || [] };
+
+            // Get order details (address, room size, etc)
+            db.query(
+              "SELECT * FROM order_details WHERE order_id = ?",
+              [order.id],
+              (err, details) => {
+                if (details && details.length > 0) {
+                  const detail = details[0];
+                  orderData.address = {
+                    house: detail.house,
+                    barangay: detail.barangay,
+                    city: detail.city,
+                    province: detail.province,
+                    zip: detail.zip
+                  };
+                  orderData.roomDetails = {
+                    room_size: detail.room_size,
+                    capacity: detail.capacity,
+                    property_type: detail.property_type
+                  };
+                }
+
+                // Get appointment if exists
+                db.query(
+                  "SELECT * FROM appointments WHERE user_id = ? ORDER BY created_at DESC LIMIT 1",
+                  [userId],
+                  (err, appointments) => {
+                    if (appointments && appointments.length > 0) {
+                      const appointment = appointments[0];
+                      orderData.appointment = {
+                        id: appointment.id,
+                        date: appointment.appointment_date,
+                        time: appointment.appointment_time,
+                        number: appointment.appointment_number
+                      };
+
+                      // Get technician if assigned
+                      if (appointment.assigned_employee_id) {
+                        db.query(
+                          "SELECT id, fname, lname, contact FROM user_signup WHERE id = ?",
+                          [appointment.assigned_employee_id],
+                          (err, technicians) => {
+                            if (technicians && technicians.length > 0) {
+                              const technician = technicians[0];
+                              orderData.technician = {
+                                id: technician.id,
+                                name: `${technician.fname} ${technician.lname}`,
+                                contact: technician.contact
+                              };
+                            }
+
+                            // Calculate subtotal
+                            orderData.subtotal = (orderData.items || []).reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+                            processedOrders.push(orderData);
+                            completed++;
+                            if (completed === orders.length) {
+                              res.json({ orders: processedOrders });
+                            }
+                          }
+                        );
+                      } else {
+                        // No technician assigned
+                        orderData.subtotal = (orderData.items || []).reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                        processedOrders.push(orderData);
+                        completed++;
+                        if (completed === orders.length) {
+                          res.json({ orders: processedOrders });
+                        }
+                      }
+                    } else {
+                      // No appointment
+                      orderData.subtotal = (orderData.items || []).reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                      processedOrders.push(orderData);
+                      completed++;
+                      if (completed === orders.length) {
+                        res.json({ orders: processedOrders });
+                      }
+                    }
+                  }
+                );
+              }
+            );
+          }
+        );
+      });
     }
   );
 });
@@ -1703,14 +1804,15 @@ app.post("/orders/:id/cancel", authenticateToken, (req, res) => {
       (err, appointments) => {
         if (!err && appointments && appointments.length > 0) {
           const appointmentDate = new Date(appointments[0].appointment_date);
+          appointmentDate.setHours(0, 0, 0, 0);
           const today = new Date();
           today.setHours(0, 0, 0, 0);
 
-          // Check if appointment date is in the past or today
-          if (appointmentDate < today) {
+          // Check if appointment date is today or in the past - only allow cancellations before appointment date
+          if (appointmentDate <= today) {
             return res.status(400).json({
               success: false,
-              message: "Cannot cancel order. Appointment date has already passed."
+              message: "Cannot cancel order on or after the appointment date. Cancellations are only allowed before your appointment date."
             });
           }
         }
@@ -1863,10 +1965,12 @@ app.get("/admin/orders", (req, res) => {
   db.query(
     `SELECT o.id, o.order_number, o.user_id, o.total_amount, o.installation_fee, o.downpayment_amount, o.balance_due, o.payment_method, o.status, o.payment_status, o.created_at, o.proof_file,
             u.fname, u.lname, u.email, u.contact,
-            od.house, od.city, od.barangay, od.province, od.zip, od.room_size, od.capacity, od.property_type
+            od.house, od.city, od.barangay, od.province, od.zip, od.room_size, od.capacity, od.property_type,
+            a.appointment_number, a.appointment_date, a.appointment_time
      FROM orders o
      JOIN user_signup u ON o.user_id = u.id
      LEFT JOIN order_details od ON o.id = od.order_id
+     LEFT JOIN appointments a ON o.id = a.order_id OR (o.user_id = a.user_id AND a.order_id IS NULL)
      ORDER BY o.created_at DESC`,
     (err, results) => {
       if (err) {
@@ -2242,12 +2346,14 @@ app.post("/admin/orders/:id/assign-employee", (req, res) => {
 });
 app.get("/admin/appointments", (req, res) => {
   db.query(
-    `SELECT a.id, a.appointment_number, a.user_id, a.appointment_date, a.appointment_time, a.created_at, a.assigned_employee_id, a.completion_status, a.completed_at,
+    `SELECT a.id, a.appointment_number, a.user_id, a.order_id, a.appointment_date, a.appointment_time, a.created_at, a.assigned_employee_id, a.completion_status, a.completed_at,
             u.fname, u.lname, u.email, u.contact,
-            e.fname AS technician_fname, e.lname AS technician_lname, e.contact AS technician_contact
+            e.fname AS technician_fname, e.lname AS technician_lname, e.contact AS technician_contact,
+            o.order_number
      FROM appointments a
      JOIN user_signup u ON a.user_id = u.id
      LEFT JOIN user_signup e ON a.assigned_employee_id = e.id
+     LEFT JOIN orders o ON a.order_id = o.id OR CAST(a.order_id AS UNSIGNED) = o.id
      ORDER BY a.appointment_date DESC`,
     (err, results) => {
       if (err) {

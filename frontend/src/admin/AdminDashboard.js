@@ -93,7 +93,7 @@ const AdminDashboard = () => {
                     alignItems: 'center',
                     gap: '15px'
                 }}>
-                    <i className="fa-solid fa-triangle-exclamation" style={{ fontSize: '24px', color: '#ff6b6b' }}>⚠️</i>
+                    <i className="fa-solid fa-triangle-exclamation" style={{ fontSize: '24px', color: '#ff6b6b' }}></i>
                     <div>
                         <h3 style={{ margin: '0 0 10px 0', color: '#856404' }}>Low Stock Alert</h3>
                         <p style={{ margin: 0, color: '#856404' }}>

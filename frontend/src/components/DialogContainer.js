@@ -1,28 +1,41 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import Dialog from './Dialog';
-import { setDialogCallback } from '../utils/alertDialog';
+import { setDialogCallback, setConfirmCallback } from '../utils/alertDialog';
 import '../styles/dialog.css';
 
 function DialogContainer() {
   const [dialogs, setDialogs] = useState([]);
-  const dialogsRef = useRef(dialogs);
-
-  useEffect(() => {
-    dialogsRef.current = dialogs;
-  }, [dialogs]);
 
   useEffect(() => {
     setDialogCallback((message, title) => {
       const id = Date.now() + Math.random();
-      setDialogs(prev => [...prev, { id, message, title }]);
+      setDialogs(prev => [...prev, { id, message, title, isConfirm: false }]);
 
       setTimeout(() => {
         setDialogs(prev => prev.filter(d => d.id !== id));
       }, 3000);
     });
+
+    setConfirmCallback((message, title, onConfirm, onCancel) => {
+      const id = Date.now() + Math.random();
+      setDialogs(prev => [...prev, {
+        id,
+        message,
+        title,
+        isConfirm: true,
+        onConfirm,
+        onCancel
+      }]);
+    });
   }, []);
 
-  const handleClose = (id) => {
+  const handleClose = (id, confirmed = false) => {
+    const dialog = dialogs.find(d => d.id === id);
+    if (confirmed && dialog?.onConfirm) {
+      dialog.onConfirm();
+    } else if (!confirmed && dialog?.onCancel) {
+      dialog.onCancel();
+    }
     setDialogs(prev => prev.filter(d => d.id !== id));
   };
 
@@ -34,7 +47,9 @@ function DialogContainer() {
           isOpen={true}
           message={dialog.message}
           title={dialog.title}
-          onClose={() => handleClose(dialog.id)}
+          isConfirm={dialog.isConfirm}
+          onClose={() => handleClose(dialog.id, false)}
+          onConfirm={() => handleClose(dialog.id, true)}
         />
       ))}
     </>

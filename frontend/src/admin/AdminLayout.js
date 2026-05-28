@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { showConfirm } from '../utils/alertDialog';
 import logo from '../logo.png';
 import '../styles/admin.css';
 
@@ -10,10 +11,14 @@ const AdminLayout = ({ children }) => {
     const { logout } = useAuth();
 
     const handleLogout = () => {
-        if (window.confirm('Are you sure you want to logout?')) {
-            logout();
-            navigate('/login');
-        }
+        showConfirm(
+            'Are you sure you want to logout?',
+            'Confirm Logout',
+            () => {
+                logout();
+                navigate('/login');
+            }
+        );
     };
 
     const isActive = (path) => {

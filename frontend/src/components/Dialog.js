@@ -1,7 +1,7 @@
 import React from 'react';
 import '../styles/dialog.css';
 
-function Dialog({ isOpen, message, onClose, title = 'Success' }) {
+function Dialog({ isOpen, message, onClose, onConfirm, title = 'Success', isConfirm = false }) {
   if (!isOpen) return null;
 
   return (
@@ -14,9 +14,20 @@ function Dialog({ isOpen, message, onClose, title = 'Success' }) {
           <p>{message}</p>
         </div>
         <div className="dialog-footer">
-          <button className="dialog-button" onClick={onClose}>
-            OK
-          </button>
+          {isConfirm ? (
+            <>
+              <button className="dialog-button cancel" onClick={onClose}>
+                Cancel
+              </button>
+              <button className="dialog-button" onClick={onConfirm}>
+                OK
+              </button>
+            </>
+          ) : (
+            <button className="dialog-button" onClick={onClose}>
+              OK
+            </button>
+          )}
         </div>
       </div>
     </div>

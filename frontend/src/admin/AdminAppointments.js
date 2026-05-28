@@ -171,17 +171,17 @@ const AdminAppointments = () => {
                             {appointments
                                 .filter(apt => filterStatus === 'all' || apt.completion_status === filterStatus)
                                 .map((apt) => (
-                                <tr key={apt.id} style={{ borderBottom: '1px solid #eee', opacity: apt.completion_status === 'cancelled' ? 0.7 : 1, backgroundColor: apt.completion_status === 'cancelled' ? '#f8f9fa' : 'transparent' }}>
-                                    <td style={{ padding: '12px', color: apt.completion_status === 'cancelled' ? '#666' : '#333', fontWeight: '600' }}>{apt.appointment_number}</td>
-                                    <td style={{ padding: '12px', color: apt.completion_status === 'cancelled' ? '#666' : '#333' }}>{apt.fname} {apt.lname}</td>
-                                    <td style={{ padding: '12px', color: '#666' }}>
+                                <tr key={apt.id} style={{ borderBottom: '1px solid #eee', backgroundColor: apt.completion_status === 'cancelled' ? '#f8f9fa' : 'transparent' }}>
+                                    <td style={{ padding: '12px', color: apt.completion_status === 'cancelled' ? '#666' : '#333', fontWeight: '600', opacity: apt.completion_status === 'cancelled' ? 0.7 : 1 }}>{apt.appointment_number}</td>
+                                    <td style={{ padding: '12px', color: apt.completion_status === 'cancelled' ? '#666' : '#333', opacity: apt.completion_status === 'cancelled' ? 0.7 : 1 }}>{apt.fname} {apt.lname}</td>
+                                    <td style={{ padding: '12px', color: '#666', opacity: apt.completion_status === 'cancelled' ? 0.7 : 1 }}>
                                         {new Date(apt.appointment_date).toLocaleDateString()}
                                     </td>
-                                    <td style={{ padding: '12px', color: '#666' }}>{apt.appointment_time}</td>
-                                    <td style={{ padding: '12px', color: '#666' }}>
+                                    <td style={{ padding: '12px', color: '#666', opacity: apt.completion_status === 'cancelled' ? 0.7 : 1 }}>{apt.appointment_time}</td>
+                                    <td style={{ padding: '12px', color: '#666', opacity: apt.completion_status === 'cancelled' ? 0.7 : 1 }}>
                                         {apt.technician_fname ? `${apt.technician_fname} ${apt.technician_lname}` : 'Not assigned'}
                                     </td>
-                                    <td style={{ padding: '12px' }}>
+                                    <td style={{ padding: '12px', opacity: apt.completion_status === 'cancelled' ? 0.7 : 1 }}>
                                         <span style={{
                                             padding: '4px 8px',
                                             borderRadius: '12px',
@@ -254,6 +254,11 @@ const AdminAppointments = () => {
                         <div style={{ marginBottom: '15px' }}>
                             <label style={{ display: 'block', fontWeight: '600', color: '#666', marginBottom: '5px' }}>Customer:</label>
                             <p style={{ margin: 0, color: '#333' }}>{selectedAppointment.fname} {selectedAppointment.lname}</p>
+                        </div>
+
+                        <div style={{ marginBottom: '15px' }}>
+                            <label style={{ display: 'block', fontWeight: '600', color: '#666', marginBottom: '5px' }}>Order #:</label>
+                            <p style={{ margin: 0, color: '#333' }}>{selectedAppointment.order_number || 'N/A'}</p>
                         </div>
 
                         <div style={{ marginBottom: '15px' }}>

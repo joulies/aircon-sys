@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { getNotifications, deleteNotification, deleteAllNotifications } from '../services/api';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { showAlert } from '../utils/alertDialog';
+import { showAlert, showConfirm } from '../utils/alertDialog';
 import logo from '../logo.png';
 
 function Header({ userName = 'Guest' }) {
@@ -103,13 +103,15 @@ function Header({ userName = 'Guest' }) {
   };
 
   const handleLogout = () => {
-    if (window.confirm('Are you sure you want to logout?')) {
-      // Store role before logout clears user data
-      const isAdmin = user?.role === 'admin';
-      logout();
-      // Admin redirects to login, regular users redirect to home
-      navigate(isAdmin ? '/login' : '/');
-    }
+    showConfirm(
+      'Are you sure you want to logout?',
+      'Confirm Logout',
+      () => {
+        const isAdmin = user?.role === 'admin';
+        logout();
+        navigate(isAdmin ? '/login' : '/');
+      }
+    );
   };
 
   return (

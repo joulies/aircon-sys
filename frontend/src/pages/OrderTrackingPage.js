@@ -105,12 +105,13 @@ function OrderTrackingPage() {
       return false;
     }
 
-    // Check appointment date
+    // Check appointment date - cannot cancel on or after appointment date
     if (order.appointment?.date) {
       const appointmentDate = new Date(order.appointment.date);
+      appointmentDate.setHours(0, 0, 0, 0);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      if (appointmentDate < today) {
+      if (appointmentDate <= today) {
         return false;
       }
     }
@@ -139,7 +140,7 @@ function OrderTrackingPage() {
            order.payment_status?.toLowerCase() === 'unpaid')) {
         showAlert('Your payment must be confirmed by our admin team before you can cancel this order.', 'Information');
       } else {
-        showAlert('Cannot cancel this order. The appointment date has passed.', 'Information');
+        showAlert('Cannot cancel order on or after the appointment date. Cancellations are only allowed before your appointment date.', 'Information');
       }
       return;
     }

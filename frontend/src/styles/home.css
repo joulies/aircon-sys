@@ -507,6 +507,7 @@ h2 {
     display: flex;
     justify-content: space-between;
     padding: 30px 40px;
+    margin-top: auto;
 }
 
 .image-footer a {

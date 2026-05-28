@@ -97,6 +97,10 @@ function CheckoutPage() {
   });
 
   useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
+  useEffect(() => {
     // Read pending appointment — if missing, redirect back to appointment page
     const raw = sessionStorage.getItem('pendingAppointment');
     if (!raw) {
@@ -131,6 +135,16 @@ function CheckoutPage() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+
+    // Validate room_size, capacity, and zip to ensure non-negative numbers
+    if ((name === 'room_size' || name === 'capacity' || name === 'zip') && value !== '') {
+      const numValue = parseFloat(value);
+      // If not a valid number or is negative, reject it
+      if (isNaN(numValue) || numValue < 0) {
+        return;
+      }
+    }
+
     if (name === 'city') {
       // Reset barangay when city changes
       setFormData(prev => ({
@@ -264,10 +278,12 @@ if (!token) {
               <div className="form-group">
                 <label>Room size in sqm:</label>
                 <input
-                  type="text"
+                  type="number"
                   name="room_size"
                   value={formData.room_size}
                   onChange={handleInputChange}
+                  min="0"
+                  step="0.01"
                   required
                 />
               </div>
@@ -275,10 +291,12 @@ if (!token) {
               <div className="form-group">
                 <label>Establishment Capacity (No. of rooms/offices):</label>
                 <input
-                  type="text"
+                  type="number"
                   name="capacity"
                   value={formData.capacity}
                   onChange={handleInputChange}
+                  min="0"
+                  step="1"
                   required
                 />
               </div>
@@ -360,17 +378,19 @@ if (!token) {
               <div className="form-group">
                 <label>Zip Code:</label>
                 <input
-                  type="text"
+                  type="number"
                   name="zip"
                   value={formData.zip}
                   onChange={handleInputChange}
+                  min="0"
+                  step="1"
                 />
               </div>
 
               <h4>Payment Method</h4>
 
               <div className="form-group">
-                <label>
+                <label className="payment-option">
                   <input
                     type="radio"
                     name="payment_method"
@@ -378,12 +398,12 @@ if (!token) {
                     checked={formData.payment_method === 'gcash'}
                     onChange={handleInputChange}
                   />
-                  GCash
+                  <span>GCash</span>
                 </label>
               </div>
 
               <div className="form-group">
-                <label>
+                <label className="payment-option">
                   <input
                     type="radio"
                     name="payment_method"
@@ -391,12 +411,12 @@ if (!token) {
                     checked={formData.payment_method === 'paymaya'}
                     onChange={handleInputChange}
                   />
-                  PayMaya
+                  <span>PayMaya</span>
                 </label>
               </div>
 
               <div className="form-group">
-                <label>
+                <label className="payment-option">
                   <input
                     type="radio"
                     name="payment_method"
@@ -404,20 +424,39 @@ if (!token) {
                     checked={formData.payment_method === 'cod'}
                     onChange={handleInputChange}
                   />
-                  Cash on Delivery (COD)
+                  <span>Cash on Delivery (COD)</span>
                 </label>
               </div>
 
               {(formData.payment_method === 'gcash' || formData.payment_method === 'paymaya') && (
-                <div className="form-group">
-                  <label>Upload Receipt/Proof of Payment:</label>
-                  <input
-                    type="file"
-                    name="receipt_file"
-                    onChange={handleFileChange}
-                    accept="image/*"
-                  />
-                </div>
+                <>
+                  <div className="form-group">
+                    <label>Payment QR Code:</label>
+                    <div className="qr-code-container">
+                      <img
+                        src={formData.payment_method === 'gcash' ? '/gcash-qr.svg' : '/paymaya-qr.svg'}
+                        alt={`${formData.payment_method === 'gcash' ? 'GCash' : 'PayMaya'} QR Code`}
+                        className="qr-code-image"
+                      />
+                    </div>
+                    <p className="qr-instruction">
+                      {formData.payment_method === 'gcash'
+                        ? 'Scan this QR code using your GCash app to make payment'
+                        : 'Scan this QR code using your PayMaya app to make payment'
+                      }
+                    </p>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Upload Receipt/Proof of Payment:</label>
+                    <input
+                      type="file"
+                      name="receipt_file"
+                      onChange={handleFileChange}
+                      accept="image/*"
+                    />
+                  </div>
+                </>
               )}
 
               <button type="submit" className="submit-btn">
