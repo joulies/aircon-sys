@@ -18,7 +18,7 @@ const AdminRefundRequests = () => {
     const fetchRefundRequests = async () => {
         try {
             setLoading(true);
-            const response = await fetch('http://localhost:5000/admin/refund-requests');
+            const response = await fetch('https://aircon-sys.onrender.com/admin/refund-requests');
             if (!response.ok) throw new Error('Failed to fetch refund requests');
             const data = await response.json();
             setRefundRequests(data);
@@ -35,7 +35,7 @@ const AdminRefundRequests = () => {
 
         setSubmitting(true);
         try {
-            const response = await fetch(`http://localhost:5000/admin/refund-requests/${requestId}/approve`, {
+            const response = await fetch(`https://aircon-sys.onrender.com/admin/refund-requests/${requestId}/approve`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -65,7 +65,7 @@ const AdminRefundRequests = () => {
 
         setSubmitting(true);
         try {
-            const response = await fetch(`http://localhost:5000/admin/refund-requests/${selectedRequest.id}/reject`, {
+            const response = await fetch(`https://aircon-sys.onrender.com/admin/refund-requests/${selectedRequest.id}/reject`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ reason: rejectionReason })

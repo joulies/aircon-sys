@@ -29,10 +29,10 @@ const AdminOrders = () => {
         try {
             setLoading(true);
             const [ordersRes, receiptsRes, assignmentRes, employeesRes] = await Promise.all([
-                fetch('http://localhost:5000/admin/orders'),
-                fetch('http://localhost:5000/admin/orders/pending-receipts'),
-                fetch('http://localhost:5000/admin/orders/awaiting-assignment'),
-                fetch('http://localhost:5000/admin/employees')
+                fetch('https://aircon-sys.onrender.com/admin/orders'),
+                fetch('https://aircon-sys.onrender.com/admin/orders/pending-receipts'),
+                fetch('https://aircon-sys.onrender.com/admin/orders/awaiting-assignment'),
+                fetch('https://aircon-sys.onrender.com/admin/employees')
             ]);
 
             if (!ordersRes.ok) throw new Error('Failed to fetch orders');
@@ -66,7 +66,7 @@ const AdminOrders = () => {
         if (!window.confirm('Confirm this receipt payment?')) return;
 
         try {
-            const response = await fetch(`http://localhost:5000/admin/orders/${orderId}/confirm-receipt`, {
+            const response = await fetch(`https://aircon-sys.onrender.com/admin/orders/${orderId}/confirm-receipt`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -85,7 +85,7 @@ const AdminOrders = () => {
         if (!window.confirm('Are you sure you want to reject this payment?')) return;
 
         try {
-            const response = await fetch(`http://localhost:5000/admin/orders/${orderId}/reject-receipt`, {
+            const response = await fetch(`https://aircon-sys.onrender.com/admin/orders/${orderId}/reject-receipt`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ reason: rejectionReason })
@@ -105,14 +105,14 @@ const AdminOrders = () => {
     const fetchUnavailableEmployees = async (order) => {
         try {
             // Get appointment for this order
-            const appointmentsRes = await fetch('http://localhost:5000/admin/appointments');
+            const appointmentsRes = await fetch('https://aircon-sys.onrender.com/admin/appointments');
             const appointmentsData = await appointmentsRes.json();
 
             const orderAppointment = appointmentsData.find(apt => apt.user_id === order.user_id && apt.order_id === order.id);
 
             if (orderAppointment) {
                 // Get unavailable employees for this appointment
-                const unavailRes = await fetch(`http://localhost:5000/appointments/${orderAppointment.id}/unavailable-employees`);
+                const unavailRes = await fetch(`https://aircon-sys.onrender.com/appointments/${orderAppointment.id}/unavailable-employees`);
                 if (unavailRes.ok) {
                     const data = await unavailRes.json();
                     setUnavailableEmployees(data.unavailable_employee_ids || []);
@@ -133,7 +133,7 @@ const AdminOrders = () => {
         try {
             setAssignmentError(null);
             setAssignmentSuccess(null);
-            const response = await fetch(`http://localhost:5000/admin/orders/${orderId}/assign-employee`, {
+            const response = await fetch(`https://aircon-sys.onrender.com/admin/orders/${orderId}/assign-employee`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ employee_id: selectedEmployee })
@@ -212,7 +212,7 @@ const AdminOrders = () => {
                         <div style={{ marginBottom: '20px', border: '1px solid #ddd', borderRadius: '4px', padding: '10px' }}>
                             <p style={{ marginBottom: '10px' }}><strong>Receipt Image:</strong></p>
                             <img
-                                src={`http://localhost:5000${selectedOrder.proof_file}`}
+                                src={`https://aircon-sys.onrender.com${selectedOrder.proof_file}`}
                                 alt="Receipt"
                                 style={{ maxWidth: '100%', maxHeight: '400px', borderRadius: '4px' }}
                             />
@@ -555,7 +555,7 @@ const AdminOrders = () => {
                             <h3 style={{ color: '#333', marginBottom: '15px' }}>Payment Proof</h3>
                             <div style={{ border: '1px solid #ddd', borderRadius: '4px', padding: '10px' }}>
                                 <img
-                                    src={`http://localhost:5000${selectedOrder.proof_file}`}
+                                    src={`https://aircon-sys.onrender.com${selectedOrder.proof_file}`}
                                     alt="Payment Proof"
                                     style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '4px', objectFit: 'contain' }}
                                 />

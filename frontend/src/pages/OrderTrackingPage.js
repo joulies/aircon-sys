@@ -21,7 +21,7 @@ function OrderTrackingPage() {
     try {
       setRefreshing(true);
       const token = localStorage.getItem('authToken');
-      const response = await fetch(`http://localhost:5000/orders/${orderId}`, {
+      const response = await fetch(`https://aircon-sys.onrender.com/orders/${orderId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -33,7 +33,7 @@ function OrderTrackingPage() {
 
       // Fetch refund request status
       try {
-        const refundRes = await fetch(`http://localhost:5000/orders/${orderId}/refund-status`, {
+        const refundRes = await fetch(`https://aircon-sys.onrender.com/orders/${orderId}/refund-status`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -149,7 +149,7 @@ function OrderTrackingPage() {
 
     try {
       const token = localStorage.getItem('authToken');
-      const response = await fetch(`http://localhost:5000/orders/${orderId}/cancel`, {
+      const response = await fetch(`https://aircon-sys.onrender.com/orders/${orderId}/cancel`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -178,7 +178,7 @@ function OrderTrackingPage() {
     setSubmittingRefund(true);
     try {
       const token = localStorage.getItem('authToken');
-      const response = await fetch(`http://localhost:5000/orders/${orderId}/refund`, {
+      const response = await fetch(`https://aircon-sys.onrender.com/orders/${orderId}/refund`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

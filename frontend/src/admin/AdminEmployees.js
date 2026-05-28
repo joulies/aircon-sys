@@ -21,7 +21,7 @@ const AdminEmployees = () => {
         const fetchEmployees = async () => {
             try {
                 setLoading(true);
-                const response = await fetch('http://localhost:5000/admin/employees');
+                const response = await fetch('https://aircon-sys.onrender.com/admin/employees');
                 if (!response.ok) throw new Error('Failed to fetch employees');
                 const data = await response.json();
                 setEmployees(data);
@@ -66,7 +66,7 @@ const AdminEmployees = () => {
 
         try {
             setFormLoading(true);
-            const response = await fetch('http://localhost:5000/admin/add-employee', {
+            const response = await fetch('https://aircon-sys.onrender.com/admin/add-employee', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

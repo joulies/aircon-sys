@@ -119,7 +119,7 @@ function CheckoutPage() {
   const loadCheckoutData = async () => {
     try {
       const token = localStorage.getItem('authToken');
-      const response = await fetch('http://localhost:5000/cart', {
+      const response = await fetch('https://aircon-sys.onrender.com/cart', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -230,7 +230,7 @@ if (!token) {
   return;
 }
 
-      const response = await fetch('http://localhost:5000/checkout', {
+      const response = await fetch('https://aircon-sys.onrender.com/checkout', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`

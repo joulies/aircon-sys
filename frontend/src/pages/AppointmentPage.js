@@ -4,7 +4,7 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 import '../styles/appointment.css';
 
-const API = 'http://localhost:5000';
+const API = 'https://aircon-sys.onrender.com';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const to24h = (time12) => {

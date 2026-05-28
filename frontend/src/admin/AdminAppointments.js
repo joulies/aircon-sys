@@ -15,7 +15,7 @@ const AdminAppointments = () => {
     const fetchAppointments = async () => {
         try {
             setRefreshing(true);
-            const response = await fetch('http://localhost:5000/admin/appointments');
+            const response = await fetch('https://aircon-sys.onrender.com/admin/appointments');
             if (!response.ok) throw new Error('Failed to fetch appointments');
             const data = await response.json();
             setAppointments(data);
@@ -56,7 +56,7 @@ const AdminAppointments = () => {
 
         setUnassigning(true);
         try {
-            const response = await fetch(`http://localhost:5000/appointments/${selectedAppointment.id}/unassign`, {
+            const response = await fetch(`https://aircon-sys.onrender.com/appointments/${selectedAppointment.id}/unassign`, {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' }
             });

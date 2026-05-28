@@ -20,25 +20,25 @@ const AdminDashboard = () => {
             try {
                 setLoading(true);
                 // Fetch stats
-                const statsResponse = await fetch('http://localhost:5000/admin/stats');
+                const statsResponse = await fetch('https://aircon-sys.onrender.com/admin/stats');
                 if (!statsResponse.ok) throw new Error('Failed to fetch stats');
                 const statsData = await statsResponse.json();
                 setStats(statsData);
 
                 // Fetch recent orders
-                const ordersResponse = await fetch('http://localhost:5000/admin/orders');
+                const ordersResponse = await fetch('https://aircon-sys.onrender.com/admin/orders');
                 if (!ordersResponse.ok) throw new Error('Failed to fetch orders');
                 const ordersData = await ordersResponse.json();
                 setRecentOrders(ordersData.slice(0, 5));
 
                 // Fetch pending refund requests
-                const refundsResponse = await fetch('http://localhost:5000/admin/refund-requests');
+                const refundsResponse = await fetch('https://aircon-sys.onrender.com/admin/refund-requests');
                 if (!refundsResponse.ok) throw new Error('Failed to fetch refund requests');
                 const refundsData = await refundsResponse.json();
                 setPendingRefundRequests(refundsData.slice(0, 5));
 
                 // Fetch low stock products
-                const productsResponse = await fetch('http://localhost:5000/admin/low-stock-products');
+                const productsResponse = await fetch('https://aircon-sys.onrender.com/admin/low-stock-products');
                 if (!productsResponse.ok) throw new Error('Failed to fetch low stock products');
                 const productsData = await productsResponse.json();
                 setLowStockProducts(productsData);

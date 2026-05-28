@@ -10,7 +10,7 @@ const AdminUsers = () => {
         const fetchUsers = async () => {
             try {
                 setLoading(true);
-                const response = await fetch('http://localhost:5000/admin/users');
+                const response = await fetch('https://aircon-sys.onrender.com/admin/users');
                 if (!response.ok) throw new Error('Failed to fetch users');
                 const data = await response.json();
                 setUsers(data);

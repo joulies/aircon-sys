@@ -5,7 +5,7 @@ const EmployeeAppointmentsHistory = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    const API = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+    const API = process.env.REACT_APP_API_URL || 'https://aircon-sys.onrender.com';
 
     const authHeaders = () => ({
         'Content-Type': 'application/json',

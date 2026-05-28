@@ -41,7 +41,7 @@ const AdminProducts = () => {
     const fetchProducts = async () => {
         try {
             setLoading(true);
-            const response = await fetch('http://localhost:5000/admin/products');
+            const response = await fetch('https://aircon-sys.onrender.com/admin/products');
             if (!response.ok) throw new Error('Failed to fetch products');
             const data = await response.json();
             setProducts(data);
@@ -75,7 +75,7 @@ const AdminProducts = () => {
         setImageFile(null);
         setImagePreview(
             product.image && product.image !== 'default.jpg'
-                ? `http://localhost:5000/uploads/${product.image}`
+                ? `https://aircon-sys.onrender.com/uploads/${product.image}`
                 : null
         );
         setFormError(null);
@@ -147,8 +147,8 @@ const AdminProducts = () => {
 
         try {
             const url = modalMode === 'add'
-                ? 'http://localhost:5000/products'
-                : `http://localhost:5000/products/${selectedProduct.id}`;
+                ? 'https://aircon-sys.onrender.com/products'
+                : `https://aircon-sys.onrender.com/products/${selectedProduct.id}`;
             const method = modalMode === 'add' ? 'POST' : 'PUT';
 
             // Use FormData to support file upload
@@ -180,7 +180,7 @@ const AdminProducts = () => {
         if (!deleteTarget) return;
         setDeleteLoading(true);
         try {
-            const response = await fetch(`http://localhost:5000/products/${deleteTarget.id}`, { method: 'DELETE' });
+            const response = await fetch(`https://aircon-sys.onrender.com/products/${deleteTarget.id}`, { method: 'DELETE' });
             const data = await response.json();
             if (!response.ok) throw new Error(data.error || 'Failed to delete product');
             setProducts(prev => prev.filter(p => p.id !== deleteTarget.id));
@@ -455,7 +455,7 @@ const AdminProducts = () => {
                                         <img
                                             src={
                                                 product.image && product.image !== 'default.jpg'
-                                                    ? `http://localhost:5000/uploads/${product.image}`
+                                                    ? `https://aircon-sys.onrender.com/uploads/${product.image}`
                                                     : '/default.jpg'
                                             }
                                             alt={product.product_name}

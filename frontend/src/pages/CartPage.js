@@ -19,7 +19,7 @@ function CartPage() {
     try {
       setLoading(true);
       const token = localStorage.getItem('authToken');
-      const response = await fetch('http://localhost:5000/cart', {
+      const response = await fetch('https://aircon-sys.onrender.com/cart', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -43,7 +43,7 @@ function CartPage() {
   const removeFromCart = async (itemId) => {
     try {
       const token = localStorage.getItem('authToken');
-      const response = await fetch(`http://localhost:5000/cart/${itemId}`, {
+      const response = await fetch(`https://aircon-sys.onrender.com/cart/${itemId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -75,7 +75,7 @@ function CartPage() {
     try {
       console.log(`[CartPage] Sending PUT request to update quantity`);
       const token = localStorage.getItem('authToken');
-      const response = await fetch(`http://localhost:5000/cart/${itemId}`, {
+      const response = await fetch(`https://aircon-sys.onrender.com/cart/${itemId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -194,7 +194,7 @@ function CartPage() {
                         <div
                           className="product-img"
                           style={{
-                            backgroundImage: `url(http://localhost:5000/uploads/${item.image})`
+                            backgroundImage: `url(https://aircon-sys.onrender.com/uploads/${item.image})`
                           }}
                         ></div>
                         <div className="product-info">

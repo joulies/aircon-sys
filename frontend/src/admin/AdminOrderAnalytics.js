@@ -15,7 +15,7 @@ const AdminOrderAnalytics = () => {
         const fetchAnalytics = async () => {
             try {
                 setLoading(true);
-                const response = await fetch('http://localhost:5000/admin/order-analytics');
+                const response = await fetch('https://aircon-sys.onrender.com/admin/order-analytics');
                 if (!response.ok) throw new Error('Failed to fetch analytics');
                 const data = await response.json();
                 setAnalyticsData(data);

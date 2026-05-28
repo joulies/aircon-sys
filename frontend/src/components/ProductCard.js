@@ -54,7 +54,7 @@ function ProductCard({ product, onCartUpdate }) {
     <div className="card product-card">
       <img 
         className="main-product-image" 
-        src={`http://localhost:5000/uploads/${product.image}`}
+        src={`https://aircon-sys.onrender.com/uploads/${product.image}`}
         alt={product.product_name}
         onError={(e) => e.target.src = 'https://via.placeholder.com/140'}
       />

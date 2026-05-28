@@ -20,7 +20,7 @@ function ProductDetailsPage() {
   const loadProduct = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:5000/products/${id}`);
+      const response = await fetch(`https://aircon-sys.onrender.com/products/${id}`);
       if (!response.ok) throw new Error('Product not found');
       const data = await response.json();
       setProduct(data);
@@ -54,7 +54,7 @@ function ProductDetailsPage() {
     try {
       console.log(`[ProductDetails] Adding ${quantity} of product ${id} to cart`);
       const token = localStorage.getItem('authToken');
-      const response = await fetch('http://localhost:5000/cart/add', {
+      const response = await fetch('https://aircon-sys.onrender.com/cart/add', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -127,7 +127,7 @@ function ProductDetailsPage() {
         <div className="product-view-card">
           <div className="product-image-section">
             <img
-              src={`http://localhost:5000/uploads/${product.image}`}
+              src={`https://aircon-sys.onrender.com/uploads/${product.image}`}
               alt={product.product_name}
               className="product-image"
               onError={(e) => (e.target.src = 'https://via.placeholder.com/300')}

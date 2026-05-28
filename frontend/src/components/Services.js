@@ -6,14 +6,14 @@ function Services() {
 
   // Fetch services
   useEffect(() => {
-    fetch("http://localhost:5000/services")
+    fetch("https://aircon-sys.onrender.com/services")
       .then(res => res.json())
       .then(data => setServices(data));
   }, []);
 
   // Add service
   const addService = () => {
-    fetch("http://localhost:5000/services", {
+    fetch("https://aircon-sys.onrender.com/services", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
@@ -25,7 +25,7 @@ function Services() {
 
   // Delete service
   const deleteService = (id) => {
-    fetch(`http://localhost:5000/services/${id}`, { method: "DELETE" })
+    fetch(`https://aircon-sys.onrender.com/services/${id}`, { method: "DELETE" })
       .then(() => setServices(services.filter(s => s.id !== id)));
   };
 

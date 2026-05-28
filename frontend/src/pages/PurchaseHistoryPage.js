@@ -18,7 +18,7 @@ function PurchaseHistoryPage() {
   const loadOrders = async () => {
     try {
       const token = localStorage.getItem('authToken');
-      const response = await fetch('http://localhost:5000/orders', {
+      const response = await fetch('https://aircon-sys.onrender.com/orders', {
         headers: {
           'Authorization': `Bearer ${token}`
         }

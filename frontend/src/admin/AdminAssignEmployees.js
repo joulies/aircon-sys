@@ -17,12 +17,12 @@ const AdminAssignEmployees = () => {
         const fetchData = async () => {
             try {
                 setLoading(true);
-                const appointmentsResponse = await fetch('http://localhost:5000/admin/appointments');
+                const appointmentsResponse = await fetch('https://aircon-sys.onrender.com/admin/appointments');
                 if (!appointmentsResponse.ok) throw new Error('Failed to fetch appointments');
                 const appointmentsData = await appointmentsResponse.json();
                 setAppointments(appointmentsData.slice(0, 10));
 
-                const employeesResponse = await fetch('http://localhost:5000/admin/employees');
+                const employeesResponse = await fetch('https://aircon-sys.onrender.com/admin/employees');
                 if (!employeesResponse.ok) throw new Error('Failed to fetch employees');
                 const employeesData = await employeesResponse.json();
                 setEmployees(employeesData);
@@ -47,7 +47,7 @@ const AdminAssignEmployees = () => {
                 const unavailableMap = {};
                 for (const apt of appointmentsData.slice(0, 10)) {
                     try {
-                        const unavailableResponse = await fetch(`http://localhost:5000/appointments/${apt.id}/unavailable-employees`);
+                        const unavailableResponse = await fetch(`https://aircon-sys.onrender.com/appointments/${apt.id}/unavailable-employees`);
                         if (unavailableResponse.ok) {
                             const data = await unavailableResponse.json();
                             unavailableMap[apt.id] = data.unavailable_employee_ids || [];
@@ -92,7 +92,7 @@ const AdminAssignEmployees = () => {
             setAssignmentError(null);
             setAssignmentSuccess(null);
             console.log(`[CONFIRM] Assigning employee ${selectedEmpId} to appointment ${appointmentId}`);
-            const response = await fetch(`http://localhost:5000/appointments/${appointmentId}/assign`, {
+            const response = await fetch(`https://aircon-sys.onrender.com/appointments/${appointmentId}/assign`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json'

@@ -12,7 +12,7 @@ const EmployeeDashboard = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    const API = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+    const API = process.env.REACT_APP_API_URL || 'https://aircon-sys.onrender.com';
 
     const getPhToday = () => {
         const ph = new Date(Date.now() + 8 * 60 * 60 * 1000);
