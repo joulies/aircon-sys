@@ -65,9 +65,11 @@ const db = mysql.createPool({
   queueLimit: 0
 });
 // Test email connection
+console.log("Gmail config - User:", process.env.GMAIL_USER ? "SET" : "NOT SET");
+console.log("Gmail config - Password:", process.env.GMAIL_PASSWORD ? "SET" : "NOT SET");
 transporter.verify((err, success) => {
   if (err) {
-    console.warn("⚠ Email service not configured. OTP emails will not be sent. Set GMAIL_USER and GMAIL_PASSWORD in .env");
+    console.error("⚠ Email service failed:", err.message);
   } else {
     console.log("✓ Email service configured successfully");
   }
