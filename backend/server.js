@@ -2709,6 +2709,10 @@ app.delete("/notifications/:id", authenticateToken, (req, res) => {
   );
 });
 
+app.get("/api/test", (req, res) => {
+  res.json({ message: "Backend is working" });
+});
+
 // Test endpoint - create sample notification
 app.post("/notifications/test/create", authenticateToken, (req, res) => {
   const userId = req.userId;
