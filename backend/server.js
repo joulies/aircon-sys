@@ -33,6 +33,14 @@ const transporter = nodemailer.createTransport({
   }
 });
 
+const db = mysql.createConnection({
+  host:     process.env.DB_HOST     || "localhost",
+  port:     process.env.DB_PORT     || 3306,
+  user:     process.env.DB_USER     || "root",
+  password: process.env.DB_PASSWORD || "",
+  database: process.env.DB_NAME     || "aircon_db",
+  ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : undefined
+});
 // Test email connection
 transporter.verify((err, success) => {
   if (err) {
@@ -60,13 +68,6 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-// Connect to MySQL
-const db = mysql.createConnection({
-  host: "localhost",
-  user: "root",
-  password: "", // put your MySQL password if needed
-  database: "aircon_db"
-});
 
 // Test DB
 db.connect(err => {
@@ -2716,4 +2717,4 @@ app.post("/notifications/test/create", authenticateToken, (req, res) => {
 app.listen(5000, () => {
   console.log("✓ Backend server running on port 5000");
   console.log("✓ API endpoints ready");
-});
+});s
