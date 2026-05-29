@@ -13,7 +13,7 @@ const multer = require("multer");
 const path = require("path");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const nodemailer = require("nodemailer");
+const sgMail = require("@sendgrid/mail");
 const { generateOrderNumber } = require("./utils/orderNumber");
 const { generateAppointmentNumber } = require("./utils/appointmentNumber");
 const appointmentAvailability = require("./utils/appointmentAvailability");
@@ -37,17 +37,9 @@ const formatPHDate = (val) => {
   const d = val instanceof Date ? val : new Date(val);
   return new Date(d.getTime() + 8 * 60 * 60 * 1000).toISOString().split('T')[0];
 };
-// Configure Gmail SMTP
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false,
-  family: 4,
-  auth: {
-    user: process.env.GMAIL_USER || "your-email@gmail.com",
-    pass: process.env.GMAIL_PASSWORD || "your-app-password"
-  }
-});
+// Configure SendGrid
+sgMail.setApiKey(process.env.SENDGRID_API_KEY || "");
+console.log("SendGrid API Key:", process.env.SENDGRID_API_KEY ? "SET" : "NOT SET");
 
 const mysql = require("mysql2");
 
@@ -64,16 +56,6 @@ const db = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
-});
-// Test email connection
-console.log("Gmail config - User:", process.env.GMAIL_USER ? "SET" : "NOT SET");
-console.log("Gmail config - Password:", process.env.GMAIL_PASSWORD ? "SET" : "NOT SET");
-transporter.verify((err, success) => {
-  if (err) {
-    console.error("⚠ Email service failed:", err.message);
-  } else {
-    console.log("✓ Email service configured successfully");
-  }
 });
 
 app.use(cors());
@@ -279,10 +261,10 @@ app.post("/auth/request-otp", (req, res) => {
         return res.status(500).json({ success: false, message: "Failed to generate OTP" });
       }
 
-      // Send OTP via email
-      const mailOptions = {
-        from: process.env.GMAIL_USER || "your-email@gmail.com",
+      // Send OTP via SendGrid
+      const msg = {
         to: email,
+        from: process.env.SENDGRID_FROM_EMAIL || "noreply@aircon-sys.com",
         subject: "Your OTP Verification Code",
         html: `
           <h2>Email Verification</h2>
@@ -293,18 +275,17 @@ app.post("/auth/request-otp", (req, res) => {
         `
       };
 
-      transporter.sendMail(mailOptions, (err, info) => {
-        if (err) {
-          console.error("Email sending error:", err);
-          return res.status(500).json({ success: false, message: "Failed to send OTP email" });
-        }
-
+      try {
+        await sgMail.send(msg);
         res.json({
           success: true,
           message: "OTP sent to your email",
           expiresIn: 600
         });
-      });
+      } catch (err) {
+        console.error("Email sending error:", err);
+        return res.status(500).json({ success: false, message: "Failed to send OTP email" });
+      }
     }
   );
 });
