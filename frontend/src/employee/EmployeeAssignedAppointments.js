@@ -12,14 +12,21 @@ const EmployeeAssignedAppointments = () => {
 
     const API = process.env.REACT_APP_API_URL || 'https://aircon-sys.onrender.com';
 
+    // Get current Philippine Time (UTC+8)
+    const getCurrentPHTime = () => {
+        const now = new Date();
+        return new Date(now.getTime() + 8 * 60 * 60 * 1000);
+    };
+
     const authHeaders = () => ({
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${localStorage.getItem('authToken')}`
     });
 
-    // Update current time every 5 seconds for real-time button enable/disable
+    // Update current Philippine time every 5 seconds
     useEffect(() => {
-        const interval = setInterval(() => setCurrentTime(new Date()), 5000);
+        setCurrentTime(getCurrentPHTime());
+        const interval = setInterval(() => setCurrentTime(getCurrentPHTime()), 5000);
         return () => clearInterval(interval);
     }, []);
 
