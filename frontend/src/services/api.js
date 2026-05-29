@@ -19,7 +19,7 @@ export const signup = async (fname, lname, email, contact, password) => {
     const response = await fetch(`${API_BASE_URL}/auth/signup`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'appalication/json'
       },
       body: JSON.stringify({
         fname,
@@ -216,7 +216,13 @@ export const addToCart = async (productId, quantity = 1) => {
       })
     });
 
-    return await response.json();
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to add to cart');
+    }
+
+    return data;
   } catch (error) {
     console.error('Add to cart error:', error);
     throw error;

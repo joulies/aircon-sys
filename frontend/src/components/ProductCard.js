@@ -30,20 +30,14 @@ function ProductCard({ product, onCartUpdate }) {
       console.log(`[ProductCard] Adding 1 of product ${product.id}`);
       const response = await addToCart(product.id, 1);
       console.log(`[ProductCard] Response:`, response);
-      
-      if (response.success) {
-        setFeedback('Added!');
-        refreshCartCount();
-        onCartUpdate();
-        setTimeout(() => setFeedback(''), 1500);
-      } else {
-        const errorMsg = response.message || 'Failed to add to cart';
-        console.error(`[ProductCard] Error:`, errorMsg);
-        showAlert(errorMsg, 'Error');
-      }
+
+      setFeedback('Added!');
+      refreshCartCount();
+      onCartUpdate();
+      setTimeout(() => setFeedback(''), 1500);
     } catch (error) {
-      console.error('[ProductCard] Exception:', error);
-      showAlert('Error adding to cart: ' + error.message, 'Error');
+      console.error('[ProductCard] Error:', error);
+      showAlert('Error: ' + error.message, 'Error');
     } finally {
       setIsLoading(false);
     }
