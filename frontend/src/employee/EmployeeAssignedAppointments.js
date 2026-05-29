@@ -17,9 +17,9 @@ const EmployeeAssignedAppointments = () => {
         'Authorization': `Bearer ${localStorage.getItem('authToken')}`
     });
 
-    // Update current time every minute
+    // Update current time every 5 seconds for real-time button enable/disable
     useEffect(() => {
-        const interval = setInterval(() => setCurrentTime(new Date()), 60000);
+        const interval = setInterval(() => setCurrentTime(new Date()), 5000);
         return () => clearInterval(interval);
     }, []);
 
