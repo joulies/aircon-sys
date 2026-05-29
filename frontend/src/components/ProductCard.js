@@ -31,13 +31,12 @@ function ProductCard({ product, onCartUpdate }) {
       const response = await addToCart(product.id, 1);
       console.log(`[ProductCard] Response:`, response);
       
-      if (response.ok && response.success) {
+      if (response.success) {
         setFeedback('Added!');
         refreshCartCount();
         onCartUpdate();
         setTimeout(() => setFeedback(''), 1500);
       } else {
-        // Show backend error message
         const errorMsg = response.message || 'Failed to add to cart';
         console.error(`[ProductCard] Error:`, errorMsg);
         showAlert(errorMsg, 'Error');
