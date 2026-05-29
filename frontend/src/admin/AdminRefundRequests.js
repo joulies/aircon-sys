@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { showAlert } from '../utils/alertDialog';
+import { showAlert, showConfirm } from '../utils/alertDialog';
 import AdminLayout from './AdminLayout';
 
 const AdminRefundRequests = () => {
@@ -31,24 +31,28 @@ const AdminRefundRequests = () => {
     };
 
     const handleApprove = async (requestId) => {
-        if (!window.confirm('Approve this refund request?')) return;
+        showConfirm(
+            'Approve this refund request?',
+            'Approve Refund',
+            async () => {
+                setSubmitting(true);
+                try {
+                    const response = await fetch(`https://aircon-sys.onrender.com/admin/refund-requests/${requestId}/approve`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
 
-        setSubmitting(true);
-        try {
-            const response = await fetch(`https://aircon-sys.onrender.com/admin/refund-requests/${requestId}/approve`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' }
-            });
-
-            if (!response.ok) throw new Error('Failed to approve refund request');
-            showAlert('Refund request approved successfully', 'Success');
-            fetchRefundRequests();
-        } catch (err) {
-            console.error('Error:', err);
-            showAlert('Error approving refund request', 'Error');
-        } finally {
-            setSubmitting(false);
-        }
+                    if (!response.ok) throw new Error('Failed to approve refund request');
+                    showAlert('Refund request approved successfully', 'Success');
+                    fetchRefundRequests();
+                } catch (err) {
+                    console.error('Error:', err);
+                    showAlert('Error approving refund request', 'Error');
+                } finally {
+                    setSubmitting(false);
+                }
+            }
+        );
     };
 
     const handleRejectClick = (request) => {

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import { showAlert } from '../utils/alertDialog';
+import { showAlert, showConfirm } from '../utils/alertDialog';
 import '../styles/order-tracking.css';
 
 function OrderTrackingPage() {
@@ -145,28 +145,32 @@ function OrderTrackingPage() {
       return;
     }
 
-    if (!window.confirm('Are you sure you want to cancel this order?')) return;
+    showConfirm(
+      'Are you sure you want to cancel this order?',
+      'Cancel Order',
+      async () => {
+        try {
+          const token = localStorage.getItem('authToken');
+          const response = await fetch(`https://aircon-sys.onrender.com/orders/${orderId}/cancel`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
 
-    try {
-      const token = localStorage.getItem('authToken');
-      const response = await fetch(`https://aircon-sys.onrender.com/orders/${orderId}/cancel`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
+          if (response.ok) {
+            showAlert('Order cancelled successfully', 'Success');
+            loadOrderDetails();
+          } else {
+            const data = await response.json();
+            showAlert(data.message || 'Failed to cancel order', 'Error');
+          }
+        } catch (err) {
+          console.error('Error cancelling order:', err);
+          showAlert('Error cancelling order', 'Error');
         }
-      });
-
-      if (response.ok) {
-        showAlert('Order cancelled successfully', 'Success');
-        loadOrderDetails();
-      } else {
-        const data = await response.json();
-        showAlert(data.message || 'Failed to cancel order', 'Error');
       }
-    } catch (err) {
-      console.error('Error cancelling order:', err);
-      showAlert('Error cancelling order', 'Error');
-    }
+    );
   };
 
   const handleRequestRefund = async () => {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { showAlert } from '../utils/alertDialog';
+import { showAlert, showConfirm } from '../utils/alertDialog';
 import AdminLayout from './AdminLayout';
 
 const AdminOrders = () => {
@@ -63,43 +63,51 @@ const AdminOrders = () => {
     };
 
     const handleConfirmReceipt = async (orderId) => {
-        if (!window.confirm('Confirm this receipt payment?')) return;
+        showConfirm(
+            'Confirm this receipt payment?',
+            'Confirm Receipt',
+            async () => {
+                try {
+                    const response = await fetch(`https://aircon-sys.onrender.com/admin/orders/${orderId}/confirm-receipt`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
 
-        try {
-            const response = await fetch(`https://aircon-sys.onrender.com/admin/orders/${orderId}/confirm-receipt`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
-            });
-
-            if (!response.ok) throw new Error('Failed to confirm receipt');
-            showAlert('Receipt confirmed successfully!', 'Success');
-            setShowReceiptModal(false);
-            fetchAllData();
-        } catch (err) {
-            console.error('Error:', err);
-            showAlert('Error confirming receipt', 'Error');
-        }
+                    if (!response.ok) throw new Error('Failed to confirm receipt');
+                    showAlert('Receipt confirmed successfully!', 'Success');
+                    setShowReceiptModal(false);
+                    fetchAllData();
+                } catch (err) {
+                    console.error('Error:', err);
+                    showAlert('Error confirming receipt', 'Error');
+                }
+            }
+        );
     };
 
     const handleRejectReceipt = async (orderId) => {
-        if (!window.confirm('Are you sure you want to reject this payment?')) return;
+        showConfirm(
+            'Are you sure you want to reject this payment?',
+            'Reject Payment',
+            async () => {
+                try {
+                    const response = await fetch(`https://aircon-sys.onrender.com/admin/orders/${orderId}/reject-receipt`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ reason: rejectionReason })
+                    });
 
-        try {
-            const response = await fetch(`https://aircon-sys.onrender.com/admin/orders/${orderId}/reject-receipt`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ reason: rejectionReason })
-            });
-
-            if (!response.ok) throw new Error('Failed to reject receipt');
-            showAlert('Payment rejected successfully!', 'Success');
-            setShowReceiptModal(false);
-            setRejectionReason('');
-            fetchAllData();
-        } catch (err) {
-            console.error('Error:', err);
-            showAlert('Error rejecting payment', 'Error');
-        }
+                    if (!response.ok) throw new Error('Failed to reject receipt');
+                    showAlert('Payment rejected successfully!', 'Success');
+                    setShowReceiptModal(false);
+                    setRejectionReason('');
+                    fetchAllData();
+                } catch (err) {
+                    console.error('Error:', err);
+                    showAlert('Error rejecting payment', 'Error');
+                }
+            }
+        );
     };
 
     const fetchUnavailableEmployees = async (order) => {

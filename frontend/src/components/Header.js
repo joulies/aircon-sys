@@ -63,14 +63,18 @@ function Header({ userName = 'Guest' }) {
   };
 
   const handleDeleteAll = async () => {
-    if (window.confirm('Are you sure you want to delete all notifications?')) {
-      try {
-        await deleteAllNotifications();
-        loadNotifications();
-      } catch (error) {
-        showAlert('Failed to delete notifications', 'Error');
+    showConfirm(
+      'Are you sure you want to delete all notifications?',
+      'Delete All Notifications',
+      async () => {
+        try {
+          await deleteAllNotifications();
+          loadNotifications();
+        } catch (error) {
+          showAlert('Failed to delete notifications', 'Error');
+        }
       }
-    }
+    );
   };
 
   const handleCheckboxChange = (id) => {
@@ -89,17 +93,21 @@ function Header({ userName = 'Guest' }) {
       return;
     }
 
-    if (window.confirm(`Delete ${selectedNotifications.size} notification(s)?`)) {
-      try {
-        for (const id of selectedNotifications) {
-          await deleteNotification(id);
+    showConfirm(
+      `Delete ${selectedNotifications.size} notification(s)?`,
+      'Delete Notifications',
+      async () => {
+        try {
+          for (const id of selectedNotifications) {
+            await deleteNotification(id);
+          }
+          setSelectedNotifications(new Set());
+          loadNotifications();
+        } catch (error) {
+          showAlert('Failed to delete selected notifications', 'Error');
         }
-        setSelectedNotifications(new Set());
-        loadNotifications();
-      } catch (error) {
-        showAlert('Failed to delete selected notifications', 'Error');
       }
-    }
+    );
   };
 
   const handleLogout = () => {
