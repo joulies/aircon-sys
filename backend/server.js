@@ -2156,9 +2156,11 @@ app.post("/admin/orders/:id/reject-receipt", (req, res) => {
 app.get("/admin/orders/pending-receipts", (req, res) => {
   db.query(
     `SELECT o.id, o.order_number, o.user_id, o.total_amount, o.downpayment_amount, o.payment_method, o.status, o.payment_status, o.created_at, o.proof_file,
-            u.fname, u.lname, u.email
+            u.fname, u.lname, u.email,
+            a.appointment_number, a.appointment_date, a.appointment_time
      FROM orders o
      JOIN user_signup u ON o.user_id = u.id
+     LEFT JOIN appointments a ON o.id = a.order_id
      WHERE (o.payment_method = 'gcash' OR o.payment_method = 'paymaya') AND o.status = 'Half Paid - Awaiting Confirmation'
      ORDER BY o.created_at DESC`,
     (err, results) => {
@@ -2175,9 +2177,11 @@ app.get("/admin/orders/pending-receipts", (req, res) => {
 app.get("/admin/orders/awaiting-assignment", (req, res) => {
   db.query(
     `SELECT o.id, o.order_number, o.user_id, o.total_amount, o.payment_method, o.status, o.payment_status, o.created_at,
-            u.fname, u.lname, u.email, u.contact
+            u.fname, u.lname, u.email, u.contact,
+            a.appointment_number, a.appointment_date, a.appointment_time
      FROM orders o
      JOIN user_signup u ON o.user_id = u.id
+     LEFT JOIN appointments a ON o.id = a.order_id
      WHERE o.status = 'Paid - Awaiting Assignment' OR (o.payment_method = 'cod' AND o.status = 'Pending')
      ORDER BY o.created_at DESC`,
     (err, results) => {
