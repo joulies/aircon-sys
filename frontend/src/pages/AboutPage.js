@@ -49,7 +49,7 @@ function AboutPage() {
           </span>
 
           <div className="hero-image">
-            <img src="/vapic.png" alt="VA Industrial" />
+            <img src="/assets/vapic.png" alt="VA Industrial" />
           </div>
 
           <div className="hero-text">
@@ -75,25 +75,25 @@ function AboutPage() {
         <div className="icon-row">
           <div className="icon-item">
             <div className="icon-circle">
-              <span>⚙️</span>
+              <img src="/assets/icon1.jpg" alt="Reliability" />
             </div>
           </div>
 
           <div className="icon-item">
             <div className="icon-circle">
-              <span>✓</span>
+              <img src="/assets/icon2.jpg" alt="Quality Service" />
             </div>
           </div>
 
           <div className="icon-item">
             <div className="icon-circle">
-              <span>⏱️</span>
+              <img src="/assets/icon3.jpg" alt="Timely Delivery" />
             </div>
           </div>
 
           <div className="icon-item">
             <div className="icon-circle">
-              <span>⭐</span>
+              <img src="/assets/icon4.jpg" alt="High Standards" />
             </div>
           </div>
         </div>
@@ -103,13 +103,13 @@ function AboutPage() {
       <section className="services">
         <div className="services-left">
           <div className="img-box img1">
-            <div className="placeholder-box">Service 1</div>
+            <img src="/assets/1.jpg" alt="Service 1" />
           </div>
           <div className="img-box img2">
-            <div className="placeholder-box">Service 2</div>
+            <img src="/assets/2.jpg" alt="Service 2" />
           </div>
           <div className="img-box img3">
-            <div className="placeholder-box">Service 3</div>
+            <img src="/assets/3.jpg" alt="Service 3" />
           </div>
         </div>
 
@@ -131,7 +131,7 @@ function AboutPage() {
 
       <section className="content-section">
         <div className="img-large">
-          <div className="placeholder-large">Aircon Brands Image</div>
+          <img src="/assets/brands.png" alt="Aircon Brands" />
         </div>
       </section>
 
@@ -145,7 +145,7 @@ function AboutPage() {
         </div>
 
         <div className="img-large">
-          <div className="placeholder-large">Training and Seminars Image</div>
+          <img src="/assets/seminars.png" alt="Training and Seminars" />
         </div>
       </section>
 
@@ -159,7 +159,7 @@ function AboutPage() {
         </div>
 
         <div className="img-large">
-          <div className="placeholder-large">Daikin Academy Certificates Image</div>
+          <img src="/assets/certs.png" alt="Daikin Academy Certificates" />
         </div>
       </section>
 
@@ -170,9 +170,9 @@ function AboutPage() {
             <h3>Tesda NCIII</h3>
             <div className="line-small"></div>
             <div className="img-small">
-              <div className="placeholder-small">TESDA NCIII 1</div>
-              <div className="placeholder-small">TESDA NCIII 2</div>
-              <div className="placeholder-small">TESDA NCIII 3</div>
+              <img src="/assets/tesda1.jpg" alt="Tesda NCIII 1" />
+              <img src="/assets/tesda2.jpg" alt="Tesda NCIII 2" />
+              <img src="/assets/tesda3.jpg" alt="Tesda NCIII 3" />
             </div>
           </div>
 
@@ -180,9 +180,9 @@ function AboutPage() {
             <h3>Tesda NCII</h3>
             <div className="line-small"></div>
             <div className="img-small">
-              <div className="placeholder-small">TESDA NCII 1</div>
-              <div className="placeholder-small">TESDA NCII 2</div>
-              <div className="placeholder-small">TESDA NCII 3</div>
+              <img src="/assets/tesda4.jpg" alt="Tesda NCII 1" />
+              <img src="/assets/tesda5.jpg" alt="Tesda NCII 2" />
+              <img src="/assets/tesda6.jpg" alt="Tesda NCII 3" />
             </div>
           </div>
         </div>
@@ -201,7 +201,7 @@ function AboutPage() {
           </span>
 
           <div className="awards-img">
-            <div className="placeholder-awards">{awards[currentAwardIndex]}</div>
+            <img id="awardsSlider" src="/assets/awards.jpg" alt="Awards" />
           </div>
 
           <span className="arrow-awards right-awards" onClick={handleRightArrow}>
@@ -224,7 +224,7 @@ function AboutPage() {
 
         <div className="contact-row">
           <div className="contact-block">
-            <div className="contact-icon">🔧</div>
+            <img className="contact-icon" src="/assets/add.png" alt="Add" />
             <ul>
               <li>Supply & Installation of airconditioning units & parts</li>
               <li>Preventive Maintenance, Troubleshooting & Repair</li>
@@ -234,7 +234,7 @@ function AboutPage() {
           </div>
 
           <div className="contact-block">
-            <div className="contact-icon">⚡</div>
+            <img className="contact-icon" src="/assets/adds.png" alt="Adds" />
             <ul>
               <li>Dynamic Balancing & Surge Testing</li>
               <li>Sheet metal works</li>
