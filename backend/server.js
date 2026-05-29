@@ -2160,7 +2160,7 @@ app.get("/admin/orders/pending-receipts", (req, res) => {
             a.appointment_number, a.appointment_date, a.appointment_time
      FROM orders o
      JOIN user_signup u ON o.user_id = u.id
-     LEFT JOIN appointments a ON o.id = a.order_id
+     LEFT JOIN appointments a ON o.id = a.order_id OR (o.user_id = a.user_id AND a.order_id IS NULL)
      WHERE (o.payment_method = 'gcash' OR o.payment_method = 'paymaya') AND o.status = 'Half Paid - Awaiting Confirmation'
      ORDER BY o.created_at DESC`,
     (err, results) => {
@@ -2181,7 +2181,7 @@ app.get("/admin/orders/awaiting-assignment", (req, res) => {
             a.appointment_number, a.appointment_date, a.appointment_time
      FROM orders o
      JOIN user_signup u ON o.user_id = u.id
-     LEFT JOIN appointments a ON o.id = a.order_id
+     LEFT JOIN appointments a ON o.id = a.order_id OR (o.user_id = a.user_id AND a.order_id IS NULL)
      WHERE o.status = 'Paid - Awaiting Assignment' OR (o.payment_method = 'cod' AND o.status = 'Pending')
      ORDER BY o.created_at DESC`,
     (err, results) => {
