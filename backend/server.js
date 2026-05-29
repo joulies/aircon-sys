@@ -38,10 +38,9 @@ const formatPHDate = (val) => {
   return new Date(d.getTime() + 8 * 60 * 60 * 1000).toISOString().split('T')[0];
 };
 
-// Get current Philippine Time (UTC+8)
+// Get current time (stored as UTC for consistent comparison with appointment times)
 const getCurrentPHTime = () => {
-  const now = new Date();
-  return new Date(now.getTime() + 8 * 60 * 60 * 1000);
+  return new Date();
 };
 // Configure SendGrid
 sgMail.setApiKey(process.env.SENDGRID_API_KEY || "");
@@ -1138,14 +1137,15 @@ app.put("/appointments/:id/complete", authenticateToken, (req, res) => {
           return res.status(400).json({ success: false, message: "This appointment has been cancelled by the customer. The time slot is now available for other bookings." });
         }
 
-        // Check if appointment time has arrived (using Philippine Time)
-        const appointmentDateTime = new Date(appointment.appointment_date);
+        // Check if appointment time has arrived (using Philippine Time converted to UTC)
+        const appointmentDate = new Date(appointment.appointment_date);
         const [hours, minutes] = appointment.appointment_time.split(':');
-        appointmentDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+        appointmentDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+
+        // Convert from Philippine local time (UTC+8) to UTC by subtracting 8 hours
+        const appointmentDateTime = new Date(appointmentDate.getTime() - 8 * 60 * 60 * 1000);
 
         const now = getCurrentPHTime();
-        const appointmentEndTime = new Date(appointmentDateTime);
-        appointmentEndTime.setHours(appointmentEndTime.getHours() + 2); // Appointments are 2 hours
 
         // Allow marking complete if current time is at or past appointment start time
         if (now < appointmentDateTime) {

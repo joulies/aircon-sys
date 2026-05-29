@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { showAlert } from '../utils/alertDialog';
+import { showAlert, showConfirm } from '../utils/alertDialog';
 
 const EmployeeAssignedAppointments = () => {
     const [appointments, setAppointments] = useState([]);
@@ -12,10 +12,9 @@ const EmployeeAssignedAppointments = () => {
 
     const API = process.env.REACT_APP_API_URL || 'https://aircon-sys.onrender.com';
 
-    // Get current Philippine Time (UTC+8)
+    // Get current time in UTC (for comparing with appointment times)
     const getCurrentPHTime = () => {
-        const now = new Date();
-        return new Date(now.getTime() + 8 * 60 * 60 * 1000);
+        return new Date();
     };
 
     const authHeaders = () => ({
@@ -67,10 +66,24 @@ const EmployeeAssignedAppointments = () => {
     }, [fetchAppointments]);
 
     const getAppointmentDateTime = (date, time) => {
-        const appointmentDate = new Date(date);
+        // Parse date string (YYYY-MM-DD) and time (HH:MM) as Philippine local time
+        const [year, month, day] = date.split('-');
         const [hours, minutes] = time.split(':');
-        appointmentDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-        return appointmentDate;
+
+        // Create appointment time as if it were in UTC, then subtract 8 hours to get actual UTC
+        // This is equivalent to: appointment is in PH time (UTC+8), convert to UTC
+        const appointmentDate = new Date(Date.UTC(
+            parseInt(year),
+            parseInt(month) - 1,
+            parseInt(day),
+            parseInt(hours),
+            parseInt(minutes),
+            0,
+            0
+        ));
+
+        // Subtract 8 hours (28800000 ms) to convert from PH time to UTC
+        return new Date(appointmentDate.getTime() - 8 * 60 * 60 * 1000);
     };
 
     const canMarkComplete = (appointment) => {
@@ -111,31 +124,35 @@ const EmployeeAssignedAppointments = () => {
     };
 
     const handleMarkComplete = async (appointmentId) => {
-        if (!window.confirm('Mark this appointment as completed?')) return;
+        showConfirm(
+            'Mark this appointment as completed?',
+            'Confirm Completion',
+            async () => {
+                setSubmitting(true);
+                try {
+                    const response = await fetch(
+                        `${API}/appointments/${appointmentId}/complete`,
+                        {
+                            method: 'PUT',
+                            headers: authHeaders()
+                        }
+                    );
 
-        setSubmitting(true);
-        try {
-            const response = await fetch(
-                `${API}/appointments/${appointmentId}/complete`,
-                {
-                    method: 'PUT',
-                    headers: authHeaders()
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.message || 'Failed to mark appointment as completed');
+                    }
+
+                    showAlert('Appointment marked as completed successfully', 'Success');
+                    fetchAppointments();
+                } catch (err) {
+                    console.error('Error:', err);
+                    showAlert(`Error: ${err.message}`, 'Error');
+                } finally {
+                    setSubmitting(false);
                 }
-            );
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Failed to mark appointment as completed');
             }
-
-            showAlert('Appointment marked as completed successfully', 'Success');
-            fetchAppointments();
-        } catch (err) {
-            console.error('Error:', err);
-            showAlert(`Error: ${err.message}`, 'Error');
-        } finally {
-            setSubmitting(false);
-        }
+        );
     };
 
     const renderAppointmentCard = (appointment) => {
