@@ -222,7 +222,7 @@ const AdminOrders = () => {
                             <p style={{ marginBottom: '10px' }}><strong>Receipt Image:</strong></p>
                             <div style={{ padding: '15px', backgroundColor: '#f9f9f9', borderRadius: '4px' }}>
                                 <a
-                                    href={selectedOrder.proof_file}
+                                    href={selectedOrder.proof_file.startsWith('http') ? selectedOrder.proof_file : `https://aircon-sys.onrender.com/uploads/${selectedOrder.proof_file}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     style={{
@@ -601,7 +601,7 @@ const AdminOrders = () => {
                                     </div>
                                 ) : (
                                     <img
-                                        src={selectedOrder.proof_file}
+                                        src={selectedOrder.proof_file.startsWith('http') ? selectedOrder.proof_file : `https://aircon-sys.onrender.com/uploads/${selectedOrder.proof_file}`}
                                         alt="Payment Proof"
                                         onError={() => setImageErrors({ ...imageErrors, [selectedOrder.id]: true })}
                                         style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '4px', objectFit: 'contain' }}
