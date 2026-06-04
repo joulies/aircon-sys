@@ -20,6 +20,7 @@ const AdminOrders = () => {
     const [assignmentError, setAssignmentError] = useState(null);
     const [assignmentSuccess, setAssignmentSuccess] = useState(null);
     const [unavailableEmployees, setUnavailableEmployees] = useState([]);
+    const [imageErrors, setImageErrors] = useState({});
 
     useEffect(() => {
         fetchAllData();
@@ -216,14 +217,42 @@ const AdminOrders = () => {
                         <p><strong>Downpayment:</strong> ₱{parseFloat(selectedOrder.downpayment_amount).toFixed(2)}</p>
                     </div>
 
-                    {selectedOrder.proof_file && (
+                    {selectedOrder.proof_file ? (
                         <div style={{ marginBottom: '20px', border: '1px solid #ddd', borderRadius: '4px', padding: '10px' }}>
                             <p style={{ marginBottom: '10px' }}><strong>Receipt Image:</strong></p>
-                            <img
-                                src={`https://aircon-sys.onrender.com${selectedOrder.proof_file}`}
-                                alt="Receipt"
-                                style={{ maxWidth: '100%', maxHeight: '400px', borderRadius: '4px' }}
-                            />
+                            {imageErrors[selectedOrder.id] ? (
+                                <div style={{
+                                    padding: '20px',
+                                    backgroundColor: '#f8d7da',
+                                    color: '#721c24',
+                                    border: '1px solid #f5c6cb',
+                                    borderRadius: '4px',
+                                    textAlign: 'center'
+                                }}>
+                                    ⚠ Receipt image could not be loaded. File may have been deleted or is inaccessible.
+                                </div>
+                            ) : (
+                                <img
+                                    src={`https://aircon-sys.onrender.com${selectedOrder.proof_file}`}
+                                    alt="Receipt"
+                                    onError={() => setImageErrors({ ...imageErrors, [selectedOrder.id]: true })}
+                                    style={{ maxWidth: '100%', maxHeight: '400px', borderRadius: '4px' }}
+                                />
+                            )}
+                        </div>
+                    ) : (
+                        <div style={{ marginBottom: '20px', border: '1px solid #ddd', borderRadius: '4px', padding: '10px' }}>
+                            <p style={{ marginBottom: '10px' }}><strong>Receipt Image:</strong></p>
+                            <div style={{
+                                padding: '20px',
+                                backgroundColor: '#e7f3ff',
+                                color: '#004085',
+                                border: '1px solid #b8daff',
+                                borderRadius: '4px',
+                                textAlign: 'center'
+                            }}>
+                                ℹ No receipt image uploaded
+                            </div>
                         </div>
                     )}
 
@@ -558,18 +587,32 @@ const AdminOrders = () => {
                         </div>
                     </div>
 
-                    {selectedOrder.proof_file && (
+                    {selectedOrder.proof_file ? (
                         <div style={{ marginBottom: '20px' }}>
                             <h3 style={{ color: '#333', marginBottom: '15px' }}>Payment Proof</h3>
                             <div style={{ border: '1px solid #ddd', borderRadius: '4px', padding: '10px' }}>
-                                <img
-                                    src={`https://aircon-sys.onrender.com${selectedOrder.proof_file}`}
-                                    alt="Payment Proof"
-                                    style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '4px', objectFit: 'contain' }}
-                                />
+                                {imageErrors[selectedOrder.id] ? (
+                                    <div style={{
+                                        padding: '20px',
+                                        backgroundColor: '#f8d7da',
+                                        color: '#721c24',
+                                        border: '1px solid #f5c6cb',
+                                        borderRadius: '4px',
+                                        textAlign: 'center'
+                                    }}>
+                                        ⚠ Payment proof image could not be loaded. File may have been deleted or is inaccessible.
+                                    </div>
+                                ) : (
+                                    <img
+                                        src={`https://aircon-sys.onrender.com${selectedOrder.proof_file}`}
+                                        alt="Payment Proof"
+                                        onError={() => setImageErrors({ ...imageErrors, [selectedOrder.id]: true })}
+                                        style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '4px', objectFit: 'contain' }}
+                                    />
+                                )}
                             </div>
                         </div>
-                    )}
+                    ) : null}
 
                     <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '20px' }}>
                         <button
