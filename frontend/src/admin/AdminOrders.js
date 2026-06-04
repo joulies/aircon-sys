@@ -221,20 +221,29 @@ const AdminOrders = () => {
                         <div style={{ marginBottom: '20px', border: '1px solid #ddd', borderRadius: '4px', padding: '10px' }}>
                             <p style={{ marginBottom: '10px' }}><strong>Receipt Image:</strong></p>
                             <div style={{ padding: '15px', backgroundColor: '#f9f9f9', borderRadius: '4px' }}>
-                                <a
-                                    href={selectedOrder.proof_file.startsWith('http') ? selectedOrder.proof_file : `https://aircon-sys.onrender.com/uploads/${selectedOrder.proof_file}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    style={{
-                                        color: '#0066cc',
-                                        textDecoration: 'none',
-                                        fontSize: '14px'
-                                    }}
-                                    onMouseEnter={(e) => e.target.style.textDecoration = 'underline'}
-                                    onMouseLeave={(e) => e.target.style.textDecoration = 'none'}
-                                >
-                                    📷 Click here to view receipt
-                                </a>
+                                {(() => {
+                                    let fileUrl = selectedOrder.proof_file;
+                                    if (!fileUrl.startsWith('http')) {
+                                        fileUrl = fileUrl.replace(/^uploads\//, '');
+                                        fileUrl = `https://aircon-sys.onrender.com/uploads/${fileUrl}`;
+                                    }
+                                    return (
+                                        <a
+                                            href={fileUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            style={{
+                                                color: '#0066cc',
+                                                textDecoration: 'none',
+                                                fontSize: '14px'
+                                            }}
+                                            onMouseEnter={(e) => e.target.style.textDecoration = 'underline'}
+                                            onMouseLeave={(e) => e.target.style.textDecoration = 'none'}
+                                        >
+                                            📷 Click here to view receipt
+                                        </a>
+                                    );
+                                })()}
                             </div>
                         </div>
                     ) : (
@@ -601,7 +610,14 @@ const AdminOrders = () => {
                                     </div>
                                 ) : (
                                     <img
-                                        src={selectedOrder.proof_file.startsWith('http') ? selectedOrder.proof_file : `https://aircon-sys.onrender.com/uploads/${selectedOrder.proof_file}`}
+                                        src={(() => {
+                                            let fileUrl = selectedOrder.proof_file;
+                                            if (!fileUrl.startsWith('http')) {
+                                                fileUrl = fileUrl.replace(/^uploads\//, '');
+                                                fileUrl = `https://aircon-sys.onrender.com/uploads/${fileUrl}`;
+                                            }
+                                            return fileUrl;
+                                        })()}
                                         alt="Payment Proof"
                                         onError={() => setImageErrors({ ...imageErrors, [selectedOrder.id]: true })}
                                         style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '4px', objectFit: 'contain' }}

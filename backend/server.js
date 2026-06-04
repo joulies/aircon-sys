@@ -1459,7 +1459,7 @@ app.post("/checkout", authenticateToken, uploadReceipt.single('receipt_file'), (
       if (req.file) {
         console.log('[CHECKOUT] File uploaded:', JSON.stringify(req.file, null, 2));
       }
-      const receiptPath = req.file ? req.file.path : null;
+      const receiptPath = req.file ? (req.file.secure_url || req.file.url || req.file.path) : null;
       console.log('[CHECKOUT] Receipt path to store:', receiptPath);
 
       // Create order with new schema
