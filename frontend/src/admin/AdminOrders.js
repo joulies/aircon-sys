@@ -20,7 +20,6 @@ const AdminOrders = () => {
     const [assignmentError, setAssignmentError] = useState(null);
     const [assignmentSuccess, setAssignmentSuccess] = useState(null);
     const [unavailableEmployees, setUnavailableEmployees] = useState([]);
-    const [imageErrors, setImageErrors] = useState({});
 
     useEffect(() => {
         fetchAllData();
