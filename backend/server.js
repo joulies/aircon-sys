@@ -1460,6 +1460,7 @@ app.post("/checkout", authenticateToken, uploadReceipt.single('receipt_file'), (
         console.log('[CHECKOUT] File uploaded:', JSON.stringify(req.file, null, 2));
       }
       const receiptPath = req.file ? req.file.path : null;
+      console.log('[CHECKOUT] Receipt path to store:', receiptPath);
 
       // Create order with new schema
       db.query(
@@ -2202,6 +2203,7 @@ app.get("/admin/orders/pending-receipts", (req, res) => {
         console.error("Error fetching pending receipts:", err);
         return res.status(500).json({ error: "Failed to fetch pending receipts" });
       }
+      console.log('[PENDING RECEIPTS] First order proof_file:', results[0]?.proof_file);
       res.json(results);
     }
   );
