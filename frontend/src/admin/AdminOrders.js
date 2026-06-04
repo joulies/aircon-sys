@@ -596,33 +596,29 @@ const AdminOrders = () => {
                     {selectedOrder.proof_file ? (
                         <div style={{ marginBottom: '20px' }}>
                             <h3 style={{ color: '#333', marginBottom: '15px' }}>Payment Proof</h3>
-                            <div style={{ border: '1px solid #ddd', borderRadius: '4px', padding: '10px' }}>
-                                {imageErrors[selectedOrder.id] ? (
-                                    <div style={{
-                                        padding: '20px',
-                                        backgroundColor: '#f8d7da',
-                                        color: '#721c24',
-                                        border: '1px solid #f5c6cb',
-                                        borderRadius: '4px',
-                                        textAlign: 'center'
-                                    }}>
-                                        ⚠ Payment proof image could not be loaded. File may have been deleted or is inaccessible.
-                                    </div>
-                                ) : (
-                                    <img
-                                        src={(() => {
-                                            let fileUrl = selectedOrder.proof_file;
-                                            if (!fileUrl.startsWith('http')) {
-                                                fileUrl = fileUrl.replace(/^uploads\//, '');
-                                                fileUrl = `https://aircon-sys.onrender.com/uploads/${fileUrl}`;
-                                            }
-                                            return fileUrl;
-                                        })()}
-                                        alt="Payment Proof"
-                                        onError={() => setImageErrors({ ...imageErrors, [selectedOrder.id]: true })}
-                                        style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '4px', objectFit: 'contain' }}
-                                    />
-                                )}
+                            <div style={{ border: '1px solid #ddd', borderRadius: '4px', padding: '15px', backgroundColor: '#f9f9f9' }}>
+                                <a
+                                    href={(() => {
+                                        let fileUrl = selectedOrder.proof_file;
+                                        if (!fileUrl.startsWith('http')) {
+                                            fileUrl = fileUrl.replace(/^uploads\//, '');
+                                            fileUrl = `https://aircon-sys.onrender.com/uploads/${fileUrl}`;
+                                        }
+                                        return fileUrl;
+                                    })()}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{
+                                        color: '#0066cc',
+                                        textDecoration: 'none',
+                                        fontSize: '15px',
+                                        fontWeight: '500'
+                                    }}
+                                    onMouseEnter={(e) => e.target.style.textDecoration = 'underline'}
+                                    onMouseLeave={(e) => e.target.style.textDecoration = 'none'}
+                                >
+                                    📄 View Payment Proof
+                                </a>
                             </div>
                         </div>
                     ) : null}
