@@ -25,7 +25,10 @@ function PurchaseHistoryPage() {
       });
       if (response.ok) {
         const data = await response.json();
-        setOrders(data.orders || []);
+        const sortedOrders = (data.orders || []).sort((a, b) =>
+          new Date(b.created_at) - new Date(a.created_at)
+        );
+        setOrders(sortedOrders);
       }
     } catch (err) {
       console.error('Error loading orders:', err);
