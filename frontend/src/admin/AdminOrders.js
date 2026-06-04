@@ -220,28 +220,22 @@ const AdminOrders = () => {
                     {selectedOrder.proof_file ? (
                         <div style={{ marginBottom: '20px', border: '1px solid #ddd', borderRadius: '4px', padding: '10px' }}>
                             <p style={{ marginBottom: '10px' }}><strong>Receipt Image:</strong></p>
-                            {imageErrors[selectedOrder.id] ? (
-                                <div style={{
-                                    padding: '20px',
-                                    backgroundColor: '#f8d7da',
-                                    color: '#721c24',
-                                    border: '1px solid #f5c6cb',
-                                    borderRadius: '4px',
-                                    textAlign: 'center'
-                                }}>
-                                    ⚠ Receipt image could not be loaded. File may have been deleted or is inaccessible.
-                                </div>
-                            ) : (
-                                <img
-                                    src={selectedOrder.proof_file}
-                                    alt="Receipt"
-                                    onError={(e) => {
-                                        console.log('Image failed to load from:', selectedOrder.proof_file);
-                                        setImageErrors({ ...imageErrors, [selectedOrder.id]: true });
+                            <div style={{ padding: '15px', backgroundColor: '#f9f9f9', borderRadius: '4px' }}>
+                                <a
+                                    href={selectedOrder.proof_file}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{
+                                        color: '#0066cc',
+                                        textDecoration: 'none',
+                                        fontSize: '14px'
                                     }}
-                                    style={{ maxWidth: '100%', maxHeight: '400px', borderRadius: '4px' }}
-                                />
-                            )}
+                                    onMouseEnter={(e) => e.target.style.textDecoration = 'underline'}
+                                    onMouseLeave={(e) => e.target.style.textDecoration = 'none'}
+                                >
+                                    📷 Click here to view receipt
+                                </a>
+                            </div>
                         </div>
                     ) : (
                         <div style={{ marginBottom: '20px', border: '1px solid #ddd', borderRadius: '4px', padding: '10px' }}>
