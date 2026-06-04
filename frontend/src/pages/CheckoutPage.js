@@ -448,13 +448,17 @@ if (!token) {
                   </div>
 
                   <div className="form-group">
-                    <label>Upload Receipt/Proof of Payment:</label>
+                    <label>Upload Receipt/Proof of Payment: <span style={{ color: 'red' }}>*</span></label>
                     <input
                       type="file"
                       name="receipt_file"
                       onChange={handleFileChange}
                       accept="image/*"
+                      required
                     />
+                    <small style={{ color: '#666', marginTop: '5px', display: 'block' }}>
+                      Required for {formData.payment_method === 'gcash' ? 'GCash' : 'PayMaya'} payments
+                    </small>
                   </div>
                 </>
               )}

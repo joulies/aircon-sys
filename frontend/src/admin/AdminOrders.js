@@ -233,7 +233,9 @@ const AdminOrders = () => {
                                 </div>
                             ) : (
                                 <img
-                                    src={`https://aircon-sys.onrender.com${selectedOrder.proof_file}`}
+                                    src={selectedOrder.proof_file.startsWith('http')
+                                        ? selectedOrder.proof_file
+                                        : `https://aircon-sys.onrender.com${selectedOrder.proof_file}`}
                                     alt="Receipt"
                                     onError={() => setImageErrors({ ...imageErrors, [selectedOrder.id]: true })}
                                     style={{ maxWidth: '100%', maxHeight: '400px', borderRadius: '4px' }}
@@ -604,7 +606,9 @@ const AdminOrders = () => {
                                     </div>
                                 ) : (
                                     <img
-                                        src={`https://aircon-sys.onrender.com${selectedOrder.proof_file}`}
+                                        src={selectedOrder.proof_file.startsWith('http')
+                                            ? selectedOrder.proof_file
+                                            : `https://aircon-sys.onrender.com${selectedOrder.proof_file}`}
                                         alt="Payment Proof"
                                         onError={() => setImageErrors({ ...imageErrors, [selectedOrder.id]: true })}
                                         style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '4px', objectFit: 'contain' }}

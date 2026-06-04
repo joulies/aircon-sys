@@ -10,6 +10,8 @@ const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
 const multer = require("multer");
+const cloudinary = require("cloudinary").v2;
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
 const path = require("path");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -21,6 +23,15 @@ require("dotenv").config();
 
 const app = express();
 const JWT_SECRET = "your_jwt_secret_key_change_in_production";
+
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+console.log("Cloudinary Config:", process.env.CLOUDINARY_CLOUD_NAME ? "SET" : "NOT SET");
 
 app.use(cors({
   origin: "*",
@@ -67,18 +78,21 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, 'uploads'));
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
+// Configure Cloudinary storage
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'aircon-receipts',
+    resource_type: 'auto',
+    format: async (req, file) => 'jpg',
+    public_id: (req, file) => {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      return uniqueSuffix;
+    }
   }
 });
+
 const upload = multer({ storage: storage });
 
 
@@ -1385,6 +1399,10 @@ app.post("/checkout", authenticateToken, upload.single('receipt_file'), (req, re
     return res.status(400).json({ success: false, message: "Missing appointment date or time. Please go back and select an appointment." });
   }
 
+  if ((payment_method === 'gcash' || payment_method === 'paymaya') && !req.file) {
+    return res.status(400).json({ success: false, message: "Receipt/proof of payment is required for online payments" });
+  }
+
   // Get cart items and calculate total
   db.query(
     `SELECT c.product_id, c.quantity, p.price, p.product_name, p.model_name FROM cart c
@@ -1424,8 +1442,8 @@ app.post("/checkout", authenticateToken, upload.single('receipt_file'), (req, re
       const paymentStatus = payment_method === 'cod' ? 'Unpaid' : 'Pending Confirmation';
       const orderNumber = generateOrderNumber();
 
-      // Get receipt file path if uploaded
-      const receiptPath = req.file ? `/uploads/${req.file.filename}` : null;
+      // Get receipt file path from Cloudinary if uploaded
+      const receiptPath = req.file ? req.file.path : null;
 
       // Create order with new schema
       db.query(
