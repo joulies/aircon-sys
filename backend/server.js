@@ -78,9 +78,21 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Configure Cloudinary storage
-const storage = new CloudinaryStorage({
+// Configure disk storage for product images (keep existing)
+const diskStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, path.join(__dirname, 'uploads'));
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+// Configure Cloudinary storage for receipt files only
+const cloudinaryStorage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
     folder: 'aircon-receipts',
@@ -93,7 +105,8 @@ const storage = new CloudinaryStorage({
   }
 });
 
-const upload = multer({ storage: storage });
+const upload = multer({ storage: diskStorage });
+const uploadReceipt = multer({ storage: cloudinaryStorage });
 
 
 db.getConnection((err, connection) => {
@@ -1387,7 +1400,7 @@ app.get("/appointments/technician/:id/schedule", async (req, res) => {
 // ==========================================
 
 // CREATE order (from checkout)
-app.post("/checkout", authenticateToken, upload.single('receipt_file'), (req, res) => {
+app.post("/checkout", authenticateToken, uploadReceipt.single('receipt_file'), (req, res) => {
   const userId = req.userId;
   const { room_size, capacity, property_type, house, province, city, barangay, zip, payment_method, appointment_date, appointment_time } = req.body;
 
