@@ -1456,6 +1456,9 @@ app.post("/checkout", authenticateToken, uploadReceipt.single('receipt_file'), (
       const orderNumber = generateOrderNumber();
 
       // Get receipt file path from Cloudinary if uploaded
+      if (req.file) {
+        console.log('[CHECKOUT] File uploaded:', JSON.stringify(req.file, null, 2));
+      }
       const receiptPath = req.file ? req.file.path : null;
 
       // Create order with new schema
