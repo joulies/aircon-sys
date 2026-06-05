@@ -20,6 +20,7 @@ const { generateOrderNumber } = require("./utils/orderNumber");
 const { generateAppointmentNumber } = require("./utils/appointmentNumber");
 const appointmentAvailability = require("./utils/appointmentAvailability");
 const initializeDatabase = require("./init-database");
+const migrateAddOrderId = require("./migrate-add-order-id");
 require("dotenv").config();
 
 const app = express();
@@ -123,6 +124,12 @@ db.getConnection((err, connection) => {
   initializeDatabase((success) => {
     if (success) {
       console.log("✓ Database schema initialized");
+      // Run migrations
+      migrateAddOrderId((migrationSuccess) => {
+        if (migrationSuccess) {
+          console.log("✓ Migrations completed");
+        }
+      });
     }
   });
 });
