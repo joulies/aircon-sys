@@ -7,7 +7,17 @@ const AdminEmployees = () => {
     const [error, setError] = useState(null);
     const [showPasswords, setShowPasswords] = useState({});
     const [showModal, setShowModal] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [selectedEmployee, setSelectedEmployee] = useState(null);
     const [formData, setFormData] = useState({
+        fname: '',
+        lname: '',
+        email: '',
+        contact: '',
+        password: ''
+    });
+    const [editFormData, setEditFormData] = useState({
         fname: '',
         lname: '',
         email: '',
@@ -16,6 +26,8 @@ const AdminEmployees = () => {
     });
     const [formError, setFormError] = useState(null);
     const [formLoading, setFormLoading] = useState(false);
+    const [editFormError, setEditFormError] = useState(null);
+    const [editFormLoading, setEditFormLoading] = useState(false);
 
     useEffect(() => {
         const fetchEmployees = async () => {
@@ -39,6 +51,14 @@ const AdminEmployees = () => {
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({
+            ...prev,
+            [name]: value
+        }));
+    };
+
+    const handleEditInputChange = (e) => {
+        const { name, value } = e.target;
+        setEditFormData(prev => ({
             ...prev,
             [name]: value
         }));
@@ -99,6 +119,120 @@ const AdminEmployees = () => {
         } finally {
             setFormLoading(false);
         }
+    };
+
+    const handleEditEmployee = async (e) => {
+        e.preventDefault();
+        setEditFormError(null);
+
+        if (!editFormData.fname || !editFormData.lname || !editFormData.email || !editFormData.contact) {
+            setEditFormError('All fields are required');
+            return;
+        }
+
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editFormData.email)) {
+            setEditFormError('Invalid email format');
+            return;
+        }
+
+        if (!/^\d{11}$/.test(editFormData.contact.replace(/[^\d]/g, ''))) {
+            setEditFormError('Phone number must be 11 digits');
+            return;
+        }
+
+        try {
+            setEditFormLoading(true);
+            const response = await fetch(`https://aircon-sys.onrender.com/admin/employees/${selectedEmployee.id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    fname: editFormData.fname,
+                    lname: editFormData.lname,
+                    email: editFormData.email,
+                    contact: editFormData.contact,
+                    password: editFormData.password || undefined
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to update employee');
+            }
+
+            // Update the employee in the list
+            setEmployees(prev => prev.map(emp =>
+                emp.id === selectedEmployee.id
+                    ? {
+                        ...emp,
+                        fname: editFormData.fname,
+                        lname: editFormData.lname,
+                        email: editFormData.email,
+                        contact: editFormData.contact,
+                        ...(editFormData.password && { password: editFormData.password })
+                    }
+                    : emp
+            ));
+
+            setShowEditModal(false);
+            setSelectedEmployee(null);
+            setEditFormData({ fname: '', lname: '', email: '', contact: '', password: '' });
+            setEditFormError(null);
+        } catch (err) {
+            console.error('Error updating employee:', err);
+            setEditFormError(err.message);
+        } finally {
+            setEditFormLoading(false);
+        }
+    };
+
+    const handleDeleteEmployee = async () => {
+        try {
+            setFormLoading(true);
+            const response = await fetch(`https://aircon-sys.onrender.com/admin/employees/${selectedEmployee.id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to delete employee');
+            }
+
+            // Remove employee from list
+            setEmployees(prev => prev.filter(emp => emp.id !== selectedEmployee.id));
+            setShowDeleteModal(false);
+            setSelectedEmployee(null);
+        } catch (err) {
+            console.error('Error deleting employee:', err);
+            setFormError(err.message);
+            setShowDeleteModal(false);
+        } finally {
+            setFormLoading(false);
+        }
+    };
+
+    const openEditModal = (employee) => {
+        setSelectedEmployee(employee);
+        setEditFormData({
+            fname: employee.fname,
+            lname: employee.lname,
+            email: employee.email,
+            contact: employee.contact,
+            password: ''
+        });
+        setEditFormError(null);
+        setShowEditModal(true);
+    };
+
+    const openDeleteModal = (employee) => {
+        setSelectedEmployee(employee);
+        setShowDeleteModal(true);
     };
 
     if (loading) {
@@ -319,7 +453,267 @@ const AdminEmployees = () => {
                 </div>
             )}
 
-            <div className="recent-section">
+            {/* Edit Employee Modal */}
+            {showEditModal && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000
+                }}>
+                    <div style={{
+                        backgroundColor: 'white',
+                        borderRadius: '8px',
+                        padding: '30px',
+                        width: '90%',
+                        maxWidth: '500px',
+                        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                    }}>
+                        <h3 style={{ margin: '0 0 20px 0', color: '#333', fontSize: '20px' }}>Edit Employee</h3>
+
+                        {editFormError && (
+                            <div style={{
+                                backgroundColor: '#f8d7da',
+                                color: '#721c24',
+                                padding: '12px',
+                                borderRadius: '4px',
+                                marginBottom: '15px',
+                                border: '1px solid #f5c6cb'
+                            }}>
+                                {editFormError}
+                            </div>
+                        )}
+
+                        <form onSubmit={handleEditEmployee} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', color: '#333' }}>First Name</label>
+                                <input
+                                    type="text"
+                                    name="fname"
+                                    value={editFormData.fname}
+                                    onChange={handleEditInputChange}
+                                    placeholder="Enter first name"
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px',
+                                        border: '1px solid #ddd',
+                                        borderRadius: '4px',
+                                        fontSize: '14px',
+                                        boxSizing: 'border-box'
+                                    }}
+                                />
+                            </div>
+
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', color: '#333' }}>Last Name</label>
+                                <input
+                                    type="text"
+                                    name="lname"
+                                    value={editFormData.lname}
+                                    onChange={handleEditInputChange}
+                                    placeholder="Enter last name"
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px',
+                                        border: '1px solid #ddd',
+                                        borderRadius: '4px',
+                                        fontSize: '14px',
+                                        boxSizing: 'border-box'
+                                    }}
+                                />
+                            </div>
+
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', color: '#333' }}>Email</label>
+                                <input
+                                    type="email"
+                                    name="email"
+                                    value={editFormData.email}
+                                    onChange={handleEditInputChange}
+                                    placeholder="Enter email"
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px',
+                                        border: '1px solid #ddd',
+                                        borderRadius: '4px',
+                                        fontSize: '14px',
+                                        boxSizing: 'border-box'
+                                    }}
+                                />
+                            </div>
+
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', color: '#333' }}>Phone Number</label>
+                                <input
+                                    type="tel"
+                                    name="contact"
+                                    value={editFormData.contact}
+                                    onChange={handleEditInputChange}
+                                    placeholder="09XXXXXXXXX (11 digits)"
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px',
+                                        border: '1px solid #ddd',
+                                        borderRadius: '4px',
+                                        fontSize: '14px',
+                                        boxSizing: 'border-box'
+                                    }}
+                                />
+                            </div>
+
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', color: '#333' }}>Password (leave blank to keep current)</label>
+                                <input
+                                    type="text"
+                                    name="password"
+                                    value={editFormData.password}
+                                    onChange={handleEditInputChange}
+                                    placeholder="Enter new password (optional)"
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px',
+                                        border: '1px solid #ddd',
+                                        borderRadius: '4px',
+                                        fontSize: '14px',
+                                        boxSizing: 'border-box'
+                                    }}
+                                />
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                                <button
+                                    type="submit"
+                                    disabled={editFormLoading}
+                                    style={{
+                                        flex: 1,
+                                        padding: '10px',
+                                        backgroundColor: editFormLoading ? '#ccc' : '#28a745',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        cursor: editFormLoading ? 'not-allowed' : 'pointer',
+                                        fontSize: '14px',
+                                        fontWeight: '600'
+                                    }}
+                                >
+                                    {editFormLoading ? 'Updating...' : 'Update Employee'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowEditModal(false);
+                                        setSelectedEmployee(null);
+                                        setEditFormData({ fname: '', lname: '', email: '', contact: '', password: '' });
+                                        setEditFormError(null);
+                                    }}
+                                    style={{
+                                        flex: 1,
+                                        padding: '10px',
+                                        backgroundColor: '#6c757d',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        cursor: 'pointer',
+                                        fontSize: '14px',
+                                        fontWeight: '600'
+                                    }}
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Confirmation Modal */}
+            {showDeleteModal && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000
+                }}>
+                    <div style={{
+                        backgroundColor: 'white',
+                        borderRadius: '8px',
+                        padding: '30px',
+                        width: '90%',
+                        maxWidth: '400px',
+                        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                    }}>
+                        <h3 style={{ margin: '0 0 20px 0', color: '#333', fontSize: '20px' }}>Delete Employee</h3>
+                        <p style={{ color: '#666', marginBottom: '20px' }}>
+                            Are you sure you want to delete <strong>{selectedEmployee?.fname} {selectedEmployee?.lname}</strong>? This action cannot be undone.
+                        </p>
+
+                        {formError && (
+                            <div style={{
+                                backgroundColor: '#f8d7da',
+                                color: '#721c24',
+                                padding: '12px',
+                                borderRadius: '4px',
+                                marginBottom: '15px',
+                                border: '1px solid #f5c6cb'
+                            }}>
+                                {formError}
+                            </div>
+                        )}
+
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                            <button
+                                onClick={handleDeleteEmployee}
+                                disabled={formLoading}
+                                style={{
+                                    flex: 1,
+                                    padding: '10px',
+                                    backgroundColor: formLoading ? '#ccc' : '#dc3545',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    cursor: formLoading ? 'not-allowed' : 'pointer',
+                                    fontSize: '14px',
+                                    fontWeight: '600'
+                                }}
+                            >
+                                {formLoading ? 'Deleting...' : 'Delete'}
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setShowDeleteModal(false);
+                                    setSelectedEmployee(null);
+                                    setFormError(null);
+                                }}
+                                style={{
+                                    flex: 1,
+                                    padding: '10px',
+                                    backgroundColor: '#6c757d',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    fontSize: '14px',
+                                    fontWeight: '600'
+                                }}
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
                 {employees.length === 0 ? (
                     <p style={{ color: '#666' }}>No employees found</p>
                 ) : (
@@ -367,15 +761,18 @@ const AdminEmployees = () => {
                                         {new Date(employee.created_at).toLocaleDateString()}
                                     </td>
                                     <td style={{ padding: '12px' }}>
-                                        <button style={{ marginRight: '8px', padding: '5px 10px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>Edit</button>
-                                        <button style={{ padding: '5px 10px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>Delete</button>
+                                        <button
+                                            onClick={() => openEditModal(employee)}
+                                            style={{ marginRight: '8px', padding: '5px 10px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>Edit</button>
+                                        <button
+                                            onClick={() => openDeleteModal(employee)}
+                                            style={{ padding: '5px 10px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>Delete</button>
                                     </td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
                 )}
-            </div>
         </AdminLayout>
     );
 };

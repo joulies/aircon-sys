@@ -2721,6 +2721,121 @@ app.post("/admin/add-employee", (req, res) => {
   );
 });
 
+// Edit employee
+app.put("/admin/employees/:id", async (req, res) => {
+  const employeeId = req.params.id;
+  const { fname, lname, email, contact, password } = req.body;
+
+  // Validation
+  if (!fname || !lname || !email || !contact) {
+    return res.status(400).json({ error: "All fields are required" });
+  }
+
+  try {
+    // Check if email is already taken by another employee
+    db.query(
+      "SELECT id FROM user_signup WHERE email = ? AND id != ?",
+      [email, employeeId],
+      async (err, results) => {
+        if (err) {
+          console.error("Error checking email:", err);
+          return res.status(500).json({ error: "Database error" });
+        }
+
+        if (results.length > 0) {
+          return res.status(409).json({ error: "Email already exists" });
+        }
+
+        try {
+          let updateQuery;
+          let updateParams;
+
+          // Only hash password if it's provided
+          if (password) {
+            const hashedPassword = await bcrypt.hash(password, 10);
+            updateQuery = "UPDATE user_signup SET fname = ?, lname = ?, email = ?, contact = ?, password = ? WHERE id = ?";
+            updateParams = [fname, lname, email, contact, hashedPassword, employeeId];
+          } else {
+            updateQuery = "UPDATE user_signup SET fname = ?, lname = ?, email = ?, contact = ? WHERE id = ?";
+            updateParams = [fname, lname, email, contact, employeeId];
+          }
+
+          db.query(updateQuery, updateParams, (err, result) => {
+            if (err) {
+              console.error("Error updating employee:", err);
+              return res.status(500).json({ error: "Failed to update employee" });
+            }
+
+            if (result.affectedRows === 0) {
+              return res.status(404).json({ error: "Employee not found" });
+            }
+
+            res.json({
+              success: true,
+              message: "Employee updated successfully",
+              employee: {
+                id: employeeId,
+                fname,
+                lname,
+                email,
+                contact
+              }
+            });
+          });
+        } catch (hashError) {
+          console.error("Error hashing password:", hashError);
+          return res.status(500).json({ error: "Failed to process password" });
+        }
+      }
+    );
+  } catch (error) {
+    console.error("Error updating employee:", error);
+    return res.status(500).json({ error: "Failed to update employee" });
+  }
+});
+
+// Delete employee
+app.delete("/admin/employees/:id", (req, res) => {
+  const employeeId = req.params.id;
+
+  // Check if employee has any assigned appointments
+  db.query(
+    "SELECT id FROM appointments WHERE assigned_employee_id = ? AND completion_status != 'cancelled'",
+    [employeeId],
+    (err, activeAppointments) => {
+      if (err) {
+        console.error("Error checking appointments:", err);
+        return res.status(500).json({ error: "Database error" });
+      }
+
+      if (activeAppointments.length > 0) {
+        return res.status(400).json({ error: "Cannot delete employee with active appointments" });
+      }
+
+      // Delete the employee
+      db.query(
+        "DELETE FROM user_signup WHERE id = ? AND role = 'employee'",
+        [employeeId],
+        (err, result) => {
+          if (err) {
+            console.error("Error deleting employee:", err);
+            return res.status(500).json({ error: "Failed to delete employee" });
+          }
+
+          if (result.affectedRows === 0) {
+            return res.status(404).json({ error: "Employee not found" });
+          }
+
+          res.json({
+            success: true,
+            message: "Employee deleted successfully"
+          });
+        }
+      );
+    }
+  );
+});
+
 // ==========================================
 // NOTIFICATION ENDPOINTS
 // ==========================================
