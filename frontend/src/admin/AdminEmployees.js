@@ -714,6 +714,8 @@ const AdminEmployees = () => {
                     </div>
                 </div>
             )}
+
+            <div className="recent-section">
                 {employees.length === 0 ? (
                     <p style={{ color: '#666' }}>No employees found</p>
                 ) : (
@@ -773,6 +775,7 @@ const AdminEmployees = () => {
                         </tbody>
                     </table>
                 )}
+            </div>
         </AdminLayout>
     );
 };
