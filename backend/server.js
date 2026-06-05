@@ -19,6 +19,7 @@ const sgMail = require("@sendgrid/mail");
 const { generateOrderNumber } = require("./utils/orderNumber");
 const { generateAppointmentNumber } = require("./utils/appointmentNumber");
 const appointmentAvailability = require("./utils/appointmentAvailability");
+const initializeDatabase = require("./init-database");
 require("dotenv").config();
 
 const app = express();
@@ -117,6 +118,13 @@ db.getConnection((err, connection) => {
 
   console.log("✓ Connected to MySQL database");
   connection.release();
+
+  // Initialize database schema
+  initializeDatabase((success) => {
+    if (success) {
+      console.log("✓ Database schema initialized");
+    }
+  });
 });
 // ==========================================
 // MIDDLEWARE

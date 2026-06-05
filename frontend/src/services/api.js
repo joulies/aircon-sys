@@ -19,7 +19,7 @@ export const signup = async (fname, lname, email, contact, password) => {
     const response = await fetch(`${API_BASE_URL}/auth/signup`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'appalication/json'
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         fname,
