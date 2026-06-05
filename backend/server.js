@@ -2534,6 +2534,15 @@ app.put("/admin/refund-requests/:id/approve", (req, res) => {
           return res.status(500).json({ success: false, message: "Failed to approve refund request" });
         }
 
+        // Update order status to 'refunded'
+        db.query(
+          "UPDATE orders SET status = ? WHERE id = ?",
+          ['refunded', refundRequest.order_id],
+          (err) => {
+            if (err) console.error("Error updating order status:", err);
+          }
+        );
+
         // Add notification to user
         db.query(
           "INSERT INTO notifications (user_id, message, notification_type) VALUES (?, ?, ?)",
@@ -2569,6 +2578,15 @@ app.put("/admin/refund-requests/:id/reject", (req, res) => {
         if (err) {
           return res.status(500).json({ success: false, message: "Failed to reject refund request" });
         }
+
+        // Update order status to 'rejected'
+        db.query(
+          "UPDATE orders SET status = ? WHERE id = ?",
+          ['rejected', refundRequest.order_id],
+          (err) => {
+            if (err) console.error("Error updating order status:", err);
+          }
+        );
 
         // Add notification to user
         const message = reason

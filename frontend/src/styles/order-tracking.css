@@ -539,10 +539,22 @@ hr {
     color: #084298;
 }
 
+.order-status-badge.status-refunded {
+    background: #d1e7dd;
+    color: #0f5132;
+}
+
+.order-status-badge.status-rejected {
+    background: #f8d7da;
+    color: #721c24;
+}
+
 .order-header-buttons {
     display: flex;
     flex-direction: row;
     gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
 }
 
 .action-btn {
@@ -558,7 +570,8 @@ hr {
     gap: 8px;
     transition: all 0.3s ease;
     white-space: nowrap;
-    min-width: 110px;
+    min-width: auto;
+    flex-shrink: 0;
 }
 
 .action-btn:hover:not(:disabled) {
