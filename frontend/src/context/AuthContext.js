@@ -16,7 +16,7 @@ export function AuthProvider({ children }) {
   const initializeAuth = async () => {
     try {
       const token = getToken();
-      
+
       // If no token exists, user is not logged in
       if (!token) {
         setUser(null);
@@ -27,10 +27,12 @@ export function AuthProvider({ children }) {
 
       // Verify the token with backend
       try {
-        await verifyToken(token);
-        // Token is valid, get the stored user
-        const storedUser = getStoredUser();
-        setUser(storedUser);
+        const verifyData = await verifyToken(token);
+        // Token is valid, use the user data returned from verify endpoint
+        const userData = verifyData.user;
+        setUser(userData);
+        // Update stored user in localStorage to ensure role is current
+        localStorage.setItem('user', JSON.stringify(userData));
         setIsAuthenticated(true);
       } catch (error) {
         // Token is invalid or expired, clear localStorage

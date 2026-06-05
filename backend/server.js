@@ -199,7 +199,8 @@ app.post("/auth/signup", async (req, res) => {
           fname,
           lname,
           email,
-          contact
+          contact,
+          role: 'user'
         }
       });
     });
@@ -280,7 +281,30 @@ app.post("/auth/verify", (req, res) => {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    res.json({ success: true, user: decoded });
+
+    // Fetch full user details from database to ensure role is always current
+    db.query(
+      "SELECT id, fname, lname, email, contact, role FROM user_signup WHERE id = ?",
+      [decoded.id],
+      (err, results) => {
+        if (err || results.length === 0) {
+          return res.status(401).json({ success: false, message: "User not found" });
+        }
+
+        const user = results[0];
+        res.json({
+          success: true,
+          user: {
+            id: user.id,
+            fname: user.fname,
+            lname: user.lname,
+            email: user.email,
+            contact: user.contact,
+            role: user.role
+          }
+        });
+      }
+    );
   } catch (err) {
     return res.status(401).json({ success: false, message: "Invalid token" });
   }
