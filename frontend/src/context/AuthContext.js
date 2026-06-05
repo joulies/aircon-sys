@@ -35,11 +35,20 @@ export function AuthProvider({ children }) {
         localStorage.setItem('user', JSON.stringify(userData));
         setIsAuthenticated(true);
       } catch (error) {
-        // Token is invalid or expired, clear localStorage
-        console.log('Token verification failed, clearing authentication');
-        apiLogout();
-        setUser(null);
-        setIsAuthenticated(false);
+        // Token verification failed - could be invalid token or database error
+        // Fall back to stored user if available
+        const storedUser = getStoredUser();
+        if (storedUser) {
+          console.log('Using stored user data from localStorage');
+          setUser(storedUser);
+          setIsAuthenticated(true);
+        } else {
+          // No stored user, clear authentication
+          console.log('Token verification failed and no stored user, clearing authentication');
+          apiLogout();
+          setUser(null);
+          setIsAuthenticated(false);
+        }
       }
     } catch (error) {
       console.error('Error during auth initialization:', error);
