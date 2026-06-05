@@ -50,6 +50,35 @@ function Header({ userName = 'Guest' }) {
     }
   };
 
+  const getRelativeTime = (createdAt) => {
+    try {
+      const notifDate = new Date(createdAt);
+      const now = new Date();
+      const diffMs = now - notifDate;
+      const diffMins = Math.floor(diffMs / (1000 * 60));
+
+      if (diffMins < 1) return 'just now';
+      if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? 's' : ''} ago`;
+
+      const diffHours = Math.floor(diffMins / 60);
+      if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+
+      const diffDays = Math.floor(diffHours / 24);
+      if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+
+      return notifDate.toLocaleDateString();
+    } catch (error) {
+      return 'Unknown time';
+    }
+  };
+
+  const handleNotificationClick = (notif) => {
+    if (notif.order_id) {
+      setShowNotifications(false);
+      navigate(`/purchase-history?orderId=${notif.order_id}`);
+    }
+  };
+
   const toggleNotifications = () => {
     setShowNotifications(!showNotifications);
   };
@@ -161,20 +190,27 @@ function Header({ userName = 'Guest' }) {
                     <div className="notification-list">
                       {notifications.length > 0 ? (
                         notifications.map((notif) => (
-                          <div key={notif.id} className={`notification-item notification-${notif.priority || 'info'}`}>
-                            <input 
-                              type="checkbox" 
+                          <div
+                            key={notif.id}
+                            className={`notification-item notification-${notif.notification_type || 'info'} ${notif.order_id ? 'clickable' : ''}`}
+                            onClick={() => handleNotificationClick(notif)}
+                            style={{ cursor: notif.order_id ? 'pointer' : 'default' }}
+                          >
+                            <input
+                              type="checkbox"
                               className="notification-checkbox"
                               checked={selectedNotifications.has(notif.id)}
                               onChange={() => handleCheckboxChange(notif.id)}
+                              onClick={(e) => e.stopPropagation()}
                             />
                             <div className="notification-icon">
-                              <i className={`fa ${notif.icon || 'fa-info-circle'}`}></i>
+                              <i className={`fa fa-info-circle`}></i>
                             </div>
                             <div className="notification-content">
                               <p className="notification-message">{notif.message}</p>
                               <span className="notification-time">
-                                {new Date(notif.time).toLocaleDateString()}
+                                {getRelativeTime(notif.created_at)}
+                                {notif.order_id && ' • Click to view order'}
                               </span>
                             </div>
                           </div>

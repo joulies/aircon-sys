@@ -1534,8 +1534,8 @@ app.post("/checkout", authenticateToken, uploadReceipt.single('receipt_file'), (
               // Add notification
               const message = payment_method === 'cod' ? 'Order placed successfully! Awaiting payment.' : 'Order placed! Awaiting payment confirmation.';
               db.query(
-                "INSERT INTO notifications (user_id, message, notification_type) VALUES (?, ?, ?)",
-                [userId, message, 'success'],
+                "INSERT INTO notifications (user_id, order_id, message, notification_type) VALUES (?, ?, ?, ?)",
+                [userId, orderId, message, 'success'],
                 (err) => {
                   if (err) console.error("Error creating notification:", err);
                 }
@@ -2699,7 +2699,7 @@ app.get("/notifications", authenticateToken, (req, res) => {
   const userId = req.userId;
 
   db.query(
-    "SELECT id, user_id, message, notification_type, is_read, created_at FROM notifications WHERE user_id = ? ORDER BY created_at DESC",
+    "SELECT id, user_id, order_id, message, notification_type, is_read, created_at FROM notifications WHERE user_id = ? ORDER BY created_at DESC",
     [userId],
     (err, results) => {
       if (err) {
